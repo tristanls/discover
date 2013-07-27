@@ -1,0 +1,29 @@
+{
+    "name": "discover",
+    "version": "0.0.0",
+    "description": "Node discovery based on Kademlia DHT protocol",
+    "scripts": {
+        "test": "node scripts/test.js"
+    },
+    "main": "index.js",
+    "dependencies": {
+        "discover-tcp-transport": "0.1.0",
+        "k-bucket": "0.2.0"
+    },
+    "devDependencies": {
+        "nodeunit": "0.8.1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:tristanls/node-discover.git"
+    },
+    "keywords": [
+        "discover",
+        "discovery",
+        "node",
+        "kademlia",
+        "dht"
+    ],
+    "author": "Tristan Slominski <tristan.slominski@gmail.com>",
+    "license": "MIT"
+}
