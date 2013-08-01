@@ -417,32 +417,47 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
     // console.log("FAILED QUERY COMPLETION CHECK >>> KEEP GOING");
 };
 
-Discover.prototype.register = function register (nodeId, vectorClock) {
+// contact: Object *required*
+//   id: String (base64) base64 encoded node id
+//   data: Any data to include with contact
+//   vectorClock: Integer 
+Discover.prototype.register = function register (contact) {
     var self = this;
+    contact = contact || {};
+    contact = clone(contact); // separate references from outside
     
-    if (!nodeId) nodeId = crypto.createHash('sha1').digest('base64');
-    if (!vectorClock) vectorClock = 0;
+    if (!contact.id) contact.id = crypto.createHash('sha1').digest('base64');
+    if (!contact.vectorClock) contact.vectorClock = 0;
 
-    if (!self.kBuckets[nodeId]) {
-        var kBucket = new KBucket({localNodeId: nodeId});
-        self.kBuckets[nodeId] = {
-            id: nodeId,
+    if (!self.kBuckets[contact.id]) {
+        var kBucket = new KBucket({localNodeId: contact.id});
+        self.kBuckets[contact.id] = {
+            contact: contact,
+            id: contact.id,
             kBucket: kBucket
         };
+    } else {
+        self.kBuckets[contact.id].contact = contact;
     }
 
-    // issuing find(nodeId) against own nodeId, populates the DHT with nodeId
-    self.find(nodeId, function () {});
+    // issuing find(contact.id) against own contact.id, populates the DHT
+    // with contact
+    self.find(contact.id, function () {});
 
-    return {
-        nodeId: nodeId,
-        vectorClock: vectorClock
-    };
+    return clone(contact); // don't leak internal implementation
 };
 
-Discover.prototype.unregister = function unregister (nodeId) {
+Discover.prototype.unregister = function unregister (contact) {
     var self = this;
-    if (self.kBuckets[nodeId]) delete self.kBuckets[nodeId];
+    var kBucket = self.kBuckets[contact.id];
+    if (kBucket) {
+        // vectorClock check
+        if (kBucket.contact.vectorClock && contact.vectorClock
+            && kBucket.contact.vectorClock > contact.vectorClock) {
+            return;
+        }   
+        delete self.kBuckets[contact.id];
+    }
 
     // current implemenation deletes all that "closest" contact information
     // that was gathered in the unregistering kBucket

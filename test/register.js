@@ -36,16 +36,26 @@ var events = require('events'),
 
 var test = module.exports = {};
 
-test['register() creates a new kBucket from randomly generated nodeId'] = function (test) {
+test['register() creates a new kBucket from randomly generated contact.id'] = function (test) {
     test.expect(3);
     var transport = new events.EventEmitter();
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
-    var nodeInfo = discover.register();
-    test.ok(nodeInfo.nodeId);
-    test.equal(nodeInfo.vectorClock, 0);
+    var contact = discover.register({data: 'foo'});
+    test.ok(contact.id);
+    test.equal(contact.vectorClock, 0);
     // TODO: doing this check is a design smell.. why am I reaching in here?
     test.equal(Object.keys(discover.kBuckets).length, 1);
+    test.done();
+};
+
+test['register() stores registered contact info with newly created kBucket'] = function (test) {
+    test.expect(1);
+    var transport = new events.EventEmitter();
+    transport.findNode = function () {};
+    var discover = new Discover({transport: transport});
+    var contact = discover.register({data: {foo: 'bar'}});
+    test.deepEqual(discover.kBuckets[contact.id].contact, contact);
     test.done();
 };
 
@@ -54,11 +64,23 @@ test['register() does not re-create an existing kBucket'] = function (test) {
     var transport = new events.EventEmitter();
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
-    var nodeInfo = discover.register();
+    var contact = discover.register({data: 'foo'});
     // TODO: doing this check is a design smell.. why am I reaching in here?
-    var originalKBucketReference = discover.kBuckets[nodeInfo.nodeId];
-    discover.register(nodeInfo.nodeId);
-    test.ok(originalKBucketReference === discover.kBuckets[nodeInfo.nodeId]);
+    var originalKBucketReference = discover.kBuckets[contact.id];
+    discover.register(contact);
+    test.ok(originalKBucketReference === discover.kBuckets[contact.id]);
+    test.done();
+};
+
+test['register() updates previous contact info when re-registering'] = function (test) {
+    test.expect(1);
+    var transport = new events.EventEmitter();
+    transport.findNode = function () {};
+    var discover = new Discover({transport: transport});
+    var contact = discover.register({data: {foo: 'bar'}});
+    contact.data = 'something else';
+    discover.register(contact);
+    test.deepEqual(discover.kBuckets[contact.id].contact, contact);
     test.done();
 };
 
@@ -88,7 +110,7 @@ test['register() calls transport.findNode() on the seeds if there are no ' +
         }
     };
     var discover = new Discover({seeds: seeds, transport: transport});
-    discover.register(fooBase64);
+    discover.register({id: fooBase64, data: 'foo'});
 };
 
 test['register() queries closest nodes if not found on first round by querying' +
@@ -126,5 +148,5 @@ test['register() queries closest nodes if not found on first round by querying' 
         }
     };
     var discover = new Discover({seeds: seeds, transport: transport});
-    discover.register(fooBase64);
+    discover.register({id: fooBase64, data: 'foo'});
 };

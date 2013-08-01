@@ -54,28 +54,36 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 });
 ```
 
-#### discover.register([nodeId], [vectorClock])
+#### discover.register(contact)
 
-  * `nodeId`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest()`)_ The node id to register, base64 encoded; will be converted to a Buffer
-  * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Node id and vector clock that were registered (generated if `nodeId` or `vectorClock` not given).
+  * `contact`: _Object_ Contact object to register
+    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ The contact id, base 64 encoded; will be created if not present
+    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
+  * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
 
-Registers a new node on the network with the `nodeId`. Returns a `contact`:
+Registers a new node on the network with `contact.id`. Returns a `contact`:
 
 ```javascript
 {
-    nodeId: 'Zm9v', // base64 encoded String representing nodeId
+    id: 'Zm9v', // base64 encoded String representing nodeId
+    data: {
+        ip: '127.0.0.1',
+        port: 8080
+    },
     vectorClock: 0  // vector clock paired with the nodeId
 }
 ```
 
 _NOTE: Current implementation creates a new k-bucket for every registered node id. It is important to remember that a k-bucket could store up to k*lg(n) contacts, where lg is log base 2, n is the number of registered node ids on the network, and k is the size of each k-bucket (by default 20). For 1 billion registered nodes on the network, each k-bucket could store around 20 * lg (1,000,000,000) = ~ 598 contacts. This isn't bad, until you have 1 million local entities for a total of 598,000,000 contacts plus k-bucket overhead, which starts to put real pressure on Node.js/V8 memory limit._
 
-#### discover.unregister(nodeId);
+#### discover.unregister(contact);
 
-  * `nodeId`: _String (base64)_ The previously registered nodeId, base64 encoded.
+  * `contact`: _Object_ Contact object to register
+    * `id`: _String (base64)_ The previously registered contact id, base 64 encoded;
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
-Unregisters previously registered `nodeId` from the network.
+Unregisters previously registered `contact`, identified by `contact.id` and `contact.vectorClock`, from the network.
 
 ### Transport Interface
 

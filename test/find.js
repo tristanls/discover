@@ -221,7 +221,7 @@ test['find() queries nodes from closest kBucket of a registered node'] = functio
         seeds: seeds, 
         transport: transport
     });
-    discover.register(barBase64); // creates kBucket with "bar" node id
+    discover.register({id: barBase64}); // creates kBucket with "bar" node id
     discover.find(bazBase64, function (error, contact) {
         test.ok(!error, error);
         // make sure our testing setup is proceeding correctly

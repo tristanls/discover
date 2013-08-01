@@ -39,7 +39,7 @@ var test = module.exports = {};
 test['unregister() succeeds if kBucket does not exist'] = function (test) {
     test.expect(1);
     var discover = new Discover();
-    discover.unregister(new Buffer("foo").toString("base64"));
+    discover.unregister({id: new Buffer("foo").toString("base64")});
     test.ok(true); // nothing breaks
     test.done();
 };
@@ -50,9 +50,9 @@ test['unregister() removes existing kBucket'] = function (test) {
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
     test.equal(Object.keys(discover.kBuckets).length, 0);
-    var nodeInfo = discover.register();
+    var contact = discover.register();
     test.equal(Object.keys(discover.kBuckets).length, 1);
-    discover.unregister(nodeInfo.nodeId);
+    discover.unregister(contact);
     test.equal(Object.keys(discover.kBuckets).length, 0);
     test.done();
 };
