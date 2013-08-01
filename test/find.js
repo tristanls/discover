@@ -240,3 +240,17 @@ test['find() queries nodes from closest kBucket of a registered node'] = functio
         });
     });
 };
+
+test['find() returns local node without querying the network'] = function (test) {
+    test.expect(3);
+    var fooBase64 = new Buffer("foo").toString("base64");    
+    var transport = new events.EventEmitter();
+    var discover = new Discover({transport: transport});
+    discover.register({id: fooBase64, data: 'my data'});
+    discover.find(fooBase64, function (error, contact) {
+        test.ok(!error, error);
+        test.equal(contact.id, fooBase64);
+        test.equal(contact.data, 'my data');
+        test.done();
+    });
+};

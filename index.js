@@ -233,9 +233,17 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
 
 // nodeId: String (base64) *required* Base64 encoded node id to find
 // callback: Function *required* callback to call with result
-Discover.prototype.find = function find (nodeId, callback) {
+// announce: Boolean if set to true, can't answer with local result, the
+//           purpose of this flag is for announcing contact's existence
+//           to the network 
+Discover.prototype.find = function find (nodeId, callback, announce) {
     var self = this;
     var traceHeader = "find(" + nodeId + "): ";
+
+    // see if we have a local match, and return it if not announcing
+    if (!announce && self.kBuckets[nodeId]) {
+        return callback(null, self.kBuckets[nodeId].contact);
+    }
 
     // if we have no kBuckets, that means we haven't registered any nodes yet
     // the only nodes we are aware of are the seed nodes
@@ -442,7 +450,7 @@ Discover.prototype.register = function register (contact) {
 
     // issuing find(contact.id) against own contact.id, populates the DHT
     // with contact
-    self.find(contact.id, function () {});
+    self.find(contact.id, function () {}, true /*announce*/);
 
     return clone(contact); // don't leak internal implementation
 };

@@ -40,10 +40,11 @@ Creates a new Discover instance.
 
 The `seeds` are necessary if joining an existing Discover cluster. Discover will use these `seeds` to announce itself to other nodes in the cluster. If `seeds` are not provided, then it is assumed that this is a seed node, and other nodes will include this node's address in their `seeds` option. It all has to start somewhere.
 
-#### discover.find(nodeId, callback)
+#### discover.find(nodeId, callback, announce)
 
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
+  * `announce`: _Boolean_ _(Default: false)_ _reserved for internal use_ If specified to `true` it indicates an announcement to the network so we ask the network instead of satisfying request locally
 
 The `callback` is called with the result of searching for `nodeId`. The result will be a contact containing id, ip, and port of the node.
 
