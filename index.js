@@ -293,8 +293,9 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
         // update query state and go another round
         query.index = 0;
         query.ongoingRequests = 0;
-        query.nodes = newNodes;
+        query.nodes = newNodes; // these are sorted with distance (unlike query.newNodes)
         query.closest = query.nodes[0];
+        query.newNodes = [];
         
         return process.nextTick(function () {
             self.executeQuery(query, callback);
