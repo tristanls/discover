@@ -31,7 +31,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 "use strict";
 
-var net = require('net'),
+var events = require('events'),
     TcpTransport = require('discover-tcp-transport'),
     Discover = require('../index.js');
 
@@ -46,7 +46,7 @@ test['default transport should be discover-tcp-transport'] = function (test) {
 
 test['transport provided via options should be used over the default transport'] = function (test) {
     test.expect(1);
-    var transport = {some: 'transport'};
+    var transport = new events.EventEmitter();
     var discover = new Discover({transport: transport});
     test.equal(discover.transport, transport);
     test.done();

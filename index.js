@@ -32,8 +32,10 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 var clone = require('clone'),
     crypto = require('crypto'),
+    events = require('events'),
     KBucket = require('k-bucket'),
-    TcpTransport = require('discover-tcp-transport');
+    TcpTransport = require('discover-tcp-transport'),
+    util = require('util');
 
 var Discover = module.exports = function Discover (options) {
     var self = this;
@@ -41,14 +43,70 @@ var Discover = module.exports = function Discover (options) {
 
     self.CONCURRENCY_CONSTANT = options.CONCURRENCY_CONSTANT || 3;
     self.seeds = options.seeds || [];
+    // configure tracing for debugging purposes
+    // TODO: probably change this to some sort of sane logging
+    if (options.eventTrace && options.inlineTrace) {
+        self.trace = function (message) {
+            console.log('~trace', message);
+            self.emit('~trace', message);
+        };
+    } else if (options.eventTrace) {
+        self.trace = function (message) {
+            self.emit('~trace', message);
+        };
+    } else if (options.inlineTrace) {
+        self.trace = function (message) {
+            console.log('~trace', message);
+        };
+    } else {
+        self.trace = function () {};
+    }
+    self.trace('tracing is enabled');
+
     self.transport = options.transport;
     if (!self.transport) {
         var TcpTransport = require('discover-tcp-transport');
         self.transport = new TcpTransport(options);
     }
 
+    // register a listener to update our k-buckets with nodes that we manage 
+    // contact with
+    self.transport.on('node', function (error, contact, nodeId, response) {
+        if (error) return; // failed contact
+
+        if (Object.keys(self.kBuckets).length == 0) return; // no k-buckets to update
+
+        // we successfully contacted the "contact", add it
+        // we pick the closest kBucket to the node id of our contact to store
+        // the data in, since they have the most space to accomodate near-by
+        // node ids (inherent KBucket property)
+        var closestKBuckets = [];
+        var contactIdBuffer = new Buffer(contact.id, "base64");
+        Object.keys(self.kBuckets).forEach(function (kBucketKey) {
+            var kBucket = self.kBuckets[kBucketKey];
+            var kBucketIdBuffer = new Buffer(kBucket.id, "base64");
+            closestKBuckets.push({
+                id: kBucket.id,
+                distance: KBucket.distance(contactIdBuffer, kBucketIdBuffer)
+            });
+        });
+
+        closestKBuckets = closestKBuckets.sort(function (a, b) {
+            return a.distance - b.distance;
+        });
+
+        var closestKBucketId = closestKBuckets[0].id;
+        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
+        var clonedContact = clone(contact);
+        self.trace('adding ' + util.inspect(clonedContact) + ' to kBucket ' + closestKBucketId);
+        clonedContact.id = contactIdBuffer;
+        closestKBucket.add(clonedContact);
+    });
+
     self.kBuckets = {};
 };
+
+util.inherits(Discover, events.EventEmitter);
 
 // query: Object *required* object containing query state for this request
 //   nodeId: String (base64) *required* Base64 encoded node id to find
@@ -96,6 +154,8 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
             query.ongoingRequests--;
 
             if (error) {
+                self.trace('error response from ' + util.inspect(contact) + 
+                    ' looking for ' + nodeId + ': ' + util.inspect(error));
                 var contactRecord = query.nodesMap[contact.id];
     
                 if (!contactRecord) return;
@@ -128,6 +188,8 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
 
             // we have a response, it could be an Object or Array
 
+            self.trace('response from ' + util.inspect(contact) + 
+                ' looking for ' + nodeId + ': ' + util.inspect(response));
             if (Array.isArray(response)) {
                 // add the closest contacts to new nodes
                 query.newNodes = query.newNodes.concat(response);
@@ -173,10 +235,12 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
 // callback: Function *required* callback to call with result
 Discover.prototype.find = function find (nodeId, callback) {
     var self = this;
+    var traceHeader = "find(" + nodeId + "): ";
 
     // if we have no kBuckets, that means we haven't registered any nodes yet
     // the only nodes we are aware of are the seed nodes
     if (Object.keys(self.kBuckets).length == 0) {
+        self.trace(traceHeader + 'no kBuckets, delegating to findViaSeeds()');
         return self.findViaSeeds(nodeId, callback);
     }
 
@@ -195,13 +259,30 @@ Discover.prototype.find = function find (nodeId, callback) {
         return a.distance - b.distance;
     });
 
+    self.trace(traceHeader + 'have ' + closestKBuckets.length + ' kBuckets');
+
     // we pick the closest kBucket to chose nodes from as it will have the
-    // most information about nodes closest to nodeId
-    var closestKBucketId = closestKBuckets[0].id;
-    var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
-    // get three closest nodes
-    var closestContacts = closestKBucket.closest(
-        {id: new Buffer(nodeId, "base64")}, 3);
+    // most information about nodes closest to nodeId, if closest kBucket has
+    // no nodes, we pick the next one, until we find a kBucket with nodes in it
+    // or reach the end
+    var closestContacts = [];
+    var closestKBucketsIndex = 0;
+    while (closestContacts.length == 0 
+            && closestKBucketsIndex < closestKBuckets.length) {
+        var closestKBucketId = closestKBuckets[closestKBucketsIndex].id;
+        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
+        // get three closest nodes
+        closestContacts = closestKBucket.closest(
+            {id: new Buffer(nodeId, "base64")}, 3);
+        closestKBucketsIndex++;
+    }
+
+    // if none of our local kBuckets have any contacts (should only happend
+    // when bootstrapping), talk to the seeds
+    if (closestContacts.length == 0) {
+        self.trace(traceHeader + 'no contacts in kBuckets, delegating to findViaSeeds()');
+        return self.findViaSeeds(nodeId, callback);
+    }
 
     // closestContacts will contain contacts with id as a Buffer, we clone
     // the contacts so that we can have id be a base64 encoded String
@@ -227,9 +308,11 @@ Discover.prototype.find = function find (nodeId, callback) {
 // callback: Function *required* callback to call with result
 Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback) {
     var self = this;
+    var traceHeader = "findViaSeeds(" + nodeId + "): ";
 
     // if we have no seeds, that means we don't know of any other nodes to query
     if (!self.seeds || self.seeds.length == 0) {
+        self.trace(traceHeader + 'No known seeds to query');
         return callback(new Error("No known seeds to query"));
     }
 
@@ -348,10 +431,7 @@ Discover.prototype.register = function register (nodeId, vectorClock) {
         };
     }
 
-    // TODO: fix announcing self.. the current implementation will simply
-    //       locate it's own kBucket (created just above) and then return
-    //       unreachable :/ .. need to delegate to find via seeds directly,
-    //       or bypass the "select closest kBucket" mechanism :/
+    // issuing find(nodeId) against own nodeId, populates the DHT with nodeId
     self.find(nodeId, function () {});
 
     return {
@@ -363,4 +443,10 @@ Discover.prototype.register = function register (nodeId, vectorClock) {
 Discover.prototype.unregister = function unregister (nodeId) {
     var self = this;
     if (self.kBuckets[nodeId]) delete self.kBuckets[nodeId];
+
+    // current implemenation deletes all that "closest" contact information
+    // that was gathered in the unregistering kBucket
+
+    // TODO: elaborate the implementation to distribute known nodes in this
+    //       kBucket to ones that aren't being deleted
 };

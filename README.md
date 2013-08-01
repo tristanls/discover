@@ -31,6 +31,8 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
 #### new Discover(options)
 
   * `options`:
+    * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will emit `~trace` events for debugging purposes.
+    * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will log to console `~trace` messages for debugging purposes.
     * `seeds`: _Array_ _(Default: [])_ An array of seed `contact` Objects that the `transport` understands.
     * `transport`: _Object_ _(Default: `discover-tcp-transport`)_ An optional initialized and ready to use transport module for sending communications that conforms to the Transport Protocol. If `transport` is not provided, a new instance of `discover-tcp-transport` will be created and used with default settings.
 

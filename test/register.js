@@ -61,3 +61,70 @@ test['register() does not re-create an existing kBucket'] = function (test) {
     test.ok(originalKBucketReference === discover.kBuckets[nodeInfo.nodeId]);
     test.done();
 };
+
+test['register() calls transport.findNode() on the seeds if there are no ' +
+    'previously registered nodes'] = function (test) {
+    test.expect(6);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var bazBase64 = new Buffer("baz").toString("base64");
+    var seeds = [
+        {id: bazBase64, ip: '127.0.0.1', port: 6744},
+        {id: barBase64, ip: '127.0.0.1', port: 6743}
+    ];
+    var transport = new events.EventEmitter();
+    var first = true;
+    transport.findNode = function (contact, nodeId) {
+        if (first) {
+            first = false;
+            test.equal(contact.id, seeds[0].id);
+            test.equal(contact.ip, seeds[0].ip);
+            test.equal(contact.port, seeds[0].port);
+        } else {
+            test.equal(contact.id, seeds[1].id);
+            test.equal(contact.ip, seeds[1].ip);
+            test.equal(contact.port, seeds[1].port);
+            test.done();
+        }
+    };
+    var discover = new Discover({seeds: seeds, transport: transport});
+    discover.register(fooBase64);
+};
+
+test['register() queries closest nodes if not found on first round by querying' +
+    ' seed nodes'] = function (test) {
+    test.expect(1);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var bazBase64 = new Buffer("baz").toString("base64");
+    var fopBase64 = new Buffer("fop").toString("base64");
+    var seeds = [
+        {id: bazBase64, ip: '127.0.0.1', port: 6744},
+        {id: barBase64, ip: '127.0.0.1', port: 6743}
+    ];
+    var transport = new events.EventEmitter();
+    transport.findNode = function (contact, nodeId) {
+        if (contact.id == seeds[1].id) {
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, [{
+                    id: fopBase64, ip: '192.168.0.1', port: 5553
+                }]);
+            });
+        } else if (contact.id == fopBase64) {
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, {
+                    id: fooBase64,
+                    data: {
+                        foo: 'bar'
+                    }                    
+                });
+                test.ok(true); // assert being here
+                test.done();
+            });
+        } else {
+            transport.emit('node', new Error("unreachable"), contact, nodeId);
+        }
+    };
+    var discover = new Discover({seeds: seeds, transport: transport});
+    discover.register(fooBase64);
+};

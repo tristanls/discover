@@ -170,3 +170,73 @@ test['find() queries closest nodes if not found on first round by querying seed 
         test.done();
     });
 };
+
+test['find() queries nodes from closest kBucket of a registered node'] = function (test) {
+    test.expect(6);
+    // this test has one kBucket for registered nodeId "bar"
+    // within this kBucket is one node with id "baz" (closer than "bar" to "foo")
+    // querying "baz" responds with closer node "fop"
+    // querying "fop" responds with node "foo" which we are looking for
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var bazBase64 = new Buffer("baz").toString("base64");
+    var fopBase64 = new Buffer("fop").toString("base64");
+    // console.log("foo", fooBase64);
+    // console.log("bar", barBase64);
+    // console.log("baz", bazBase64);
+    // console.log("fop", fopBase64);
+    var transport = new events.EventEmitter();
+    transport.findNode = function (contact, nodeId) {
+        if (contact.id == bazBase64) {
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, [{
+                    id: fopBase64, ip: '192.168.0.1', port: 5553
+                }]);
+            }); 
+        } else if (contact.id == fopBase64) {
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, {
+                    id: fooBase64,
+                    data: {
+                        foo: 'bar'
+                    }                    
+                });
+            });
+        } else if (nodeId == bazBase64) {
+            // someone is looking for bazBase64, want to respond to it
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, {
+                    id: bazBase64,
+                    ip: '192.168.0.2',
+                    port: 5554
+                });
+            });       
+        } else {
+            transport.emit('node', new Error("unreachable"), contact, nodeId);
+        }
+    };
+    var seeds = [{id: bazBase64, ip: '192.168.0.2', port: 5554}];
+    var discover = new Discover({
+        // inlineTrace: true, 
+        seeds: seeds, 
+        transport: transport
+    });
+    discover.register(barBase64); // creates kBucket with "bar" node id
+    discover.find(bazBase64, function (error, contact) {
+        test.ok(!error, error);
+        // make sure our testing setup is proceeding correctly
+        test.equal(contact.id, bazBase64);
+        test.equal(contact.ip, '192.168.0.2');
+        test.equal(contact.port, 5554);
+        // "baz" node should now be present in "bar" kBucket
+        discover.find(fooBase64, function (error, contact) {
+            // should select "bar" kBucket
+            // should find closest node "baz"
+            // should query "baz" and get back "fop"
+            // should queyr "fop" and get back "foo"
+            test.equal(contact.id, fooBase64);
+            test.deepEqual(contact.data, {foo: 'bar'});
+            test.done();
+        });
+    });
+};
