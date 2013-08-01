@@ -16,13 +16,13 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. Discover is implemented using a stripped down version of the Kademlia DHT. It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
 
-An enhancement (_maybe_) on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the node with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
+An enhancement _(maybe)_ on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the node with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
 
 Each Discover node is meant to store many entities that correspond to the same "physical" node. It functions as an external "gateway" of sorts to beyond the local environment. For example, if a process wants to send a message to another process that is on a remote system somewhere, Discover enables distributed master-less correlation of that process' id with it's physical location for message delivery (or delivery failure if it cannot be found).
 
 It is worth highlighting that Discover is _only_ a discovery mechanism. You can find out where a node is (it's IP and port, for example), but to talk to it, you should have a way of doing that yourself.
 
-### Why?
+### Why Discover?
 
 There are two reasons.
 
