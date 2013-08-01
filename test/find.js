@@ -132,3 +132,42 @@ test['find() returns found node if found node while contacting a seed on first r
         test.done();
     });
 };
+
+test['find() queries closest nodes if not found on first round by querying seed nodes'] = function (test) {
+    test.expect(2);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var bazBase64 = new Buffer("baz").toString("base64");
+    var fopBase64 = new Buffer("fop").toString("base64");
+    var seeds = [
+        {id: bazBase64, ip: '127.0.0.1', port: 6744},
+        {id: barBase64, ip: '127.0.0.1', port: 6743}
+    ];
+    var transport = new events.EventEmitter();
+    transport.findNode = function (contact, nodeId) {
+        if (contact.id == seeds[1].id) {
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, [{
+                    id: fopBase64, ip: '192.168.0.1', port: 5553
+                }]);
+            });
+        } else if (contact.id == fopBase64) {
+            process.nextTick(function () {
+                transport.emit('node', null, contact, nodeId, {
+                    id: fooBase64,
+                    data: {
+                        foo: 'bar'
+                    }                    
+                });
+            });
+        } else {
+            transport.emit('node', new Error("unreachable"), contact, nodeId);
+        }
+    };
+    var discover = new Discover({seeds: seeds, transport: transport});
+    discover.find(fooBase64, function (error, contact) {
+        test.equal(contact.id, fooBase64);
+        test.deepEqual(contact.data, {foo: 'bar'});
+        test.done();
+    });
+}

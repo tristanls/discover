@@ -59,7 +59,7 @@ var Discover = module.exports = function Discover (options) {
 Discover.prototype.executeQuery = function executeQuery (query, callback) {
     var self = this;
 
-    if (query.done) return; // query already completed
+    if (query.done) return; // query already successfully completed
 
     // if we have no nodes, we can't query anything
     if (!query.nodes || query.nodes.length == 0) {
@@ -84,6 +84,8 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
         query.listener = function (error, contact, nodeId, response) {
             // filter other queries
             if (nodeId != query.nodeId) return;
+
+            if (query.done) return; // query already successfully completed
 
             // request has been handled
             // TODO: what happens if two requests for the same nodeId are
@@ -126,7 +128,19 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
             // we have a response, it could be an Object or Array
 
             if (Array.isArray(response)) {
-                console.log("RESPONSE ARRAY... TODO");
+                // add the closest contacts to new nodes
+                query.newNodes = query.newNodes.concat(response);
+
+                // TODO: same code inside error handler
+                // initiate next request if there are still queries to be made
+                if (query.index < query.nodes.length
+                    && query.ongoingRequests < self.CONCURRENCY_CONSTANT) {
+                    process.nextTick(function () {
+                        self.executeQuery(query, callback);
+                    });
+                } else {
+                    self.queryCompletionCheck(query, callback);
+                }
                 return;
             }
 
