@@ -81,6 +81,8 @@ Modules implementing the transport mechanism for Discover shall conform to the f
 
 Transport implementations shall ensure that `contact.id` and `contact.data` will be immutable and will pass through the transportation system without modification (`contact` objects are passed through the transportation system when responding to FIND-NODE requests).
 
+Transport implementations shall allow registering and interacting with event listeners as provided by `events.EventEmitter` interface.
+
 For reference implementation, see [discover-tcp-transport](https://github.com/tristanls/node-discover-tcp-transport).
 
 _NOTE: Unreachability of nodes depends on the transport. For example, transports ,like TLS transport, could use invalid certificate criteria for reporting unreachable nodes._
