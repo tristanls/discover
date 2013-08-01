@@ -16,11 +16,19 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. Discover is implemented using a stripped down version of the Kademlia DHT. It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
 
-An enhancement on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the node with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
+An enhancement (_maybe_) on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the node with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
 
 Each Discover node is meant to store many entities that correspond to the same "physical" node. It functions as an external "gateway" of sorts to beyond the local environment. For example, if a process wants to send a message to another process that is on a remote system somewhere, Discover enables distributed master-less correlation of that process' id with it's physical location for message delivery (or delivery failure if it cannot be found).
 
 It is worth highlighting that Discover is _only_ a discovery mechanism. You can find out where a node is (it's IP and port, for example), but to talk to it, you should have a way of doing that yourself.
+
+### Why?
+
+There are two reasons.
+
+First, Discover exists because every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation. 
+
+Second, I wanted to learn and commit to intuition the implementation of Kademlia DHT so that I can apply that knowledge in other projects. This way, in case the first reason becomes invalid, there's still this one.
 
 ## Documentation
 
@@ -182,13 +190,32 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 
 ## Road Map
 
-### Less destructive unregister()
+### Immediate concerns
+
+This is roughly in order of current priority:
+
+  * **Interface Specification**: The interface points between `discover`, `transport`, and `k-bucket` are still experimental but are quickly converging on what they need to be in order to support the functionality
+  * **Implementation Correctness**: Gain confidence that the protocol functions as expected. This should involve running a lot of nodes and measuring information distribution latency and accuracy.
+  * **UDP Transport** _(separate module)_
+  * **TLS Transport** _(separate module)_
+  * **DTLS Transport** _(separate module)_
+  * **Performance**: Make it fast and small.
+
+### Other considerations
+
+This is a non-exclusive list of some of the highlights to keep in mind and maybe implement if opportunity presents itself.
+
+#### Settle the vocabulary
+
+Throughout Discover, the transport, and the k-bucket implementations, the vocabulary is inconsistent (in particular the usage of "contact", "node", "network", and "DHT"). Once the implementation settles and it becomes obvious what belongs where, it will be helpful to have a common, unifying way to refer to everything.
+
+#### Less destructive unregister()
 
 Currently, `discover.unregister(contact)` deletes all "closest" contact information that was gathered within the k-bucket corresponding to the `contact`. This throws away DHT information stored there.
 
 An elaboration would be to distribute known contacts to other k-buckets when a `contact` is unregistered.
 
-### Multiple Transports
+#### Multiple Transports
 
 There is really nothing that I immediately see that would be preventing use of multiple transports. It may be useful to implement a `contact.transport` field to specify which transport to use/prefer. For example:
 
