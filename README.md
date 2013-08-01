@@ -182,6 +182,12 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 
 ## Road Map
 
+### Less destructive unregister()
+
+Currently, `discover.unregister(contact)` deletes all "closest" contact information that was gathered within the k-bucket corresponding to the `contact`. This throws away DHT information stored there.
+
+An elaboration would be to distribute known contacts to other k-buckets when a `contact` is unregistered.
+
 ### Multiple Transports
 
 There is really nothing that I immediately see that would be preventing use of multiple transports. It may be useful to implement a `contact.transport` field to specify which transport to use/prefer. For example:
