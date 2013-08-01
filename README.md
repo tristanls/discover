@@ -169,10 +169,6 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 
 ## Road Map
 
-### Which K-Bucket to use for lookup?
-
-When a transport emits a `findNode` event and none of the registered nodes correspond to the queried node, which k-bucket out of all the registered nodes should be queried? `k-bucket@0.2.0` now exposes `KBucket.distance()`, which ought to enable Discover to find the closest node that it has, and then query that k-bucket for closest nodes to be found.
-
 ### Multiple Transports
 
 There is really nothing that I immediately see that would be preventing use of multiple transports. It may be useful to implement a `contact.transport` field to specify which transport to use/prefer. For example:

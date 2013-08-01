@@ -59,6 +59,8 @@ var Discover = module.exports = function Discover (options) {
 Discover.prototype.executeQuery = function executeQuery (query, callback) {
     var self = this;
 
+    if (query.done) return; // query already completed
+
     // if we have no nodes, we can't query anything
     if (!query.nodes || query.nodes.length == 0) {
         return callback( new Error("No known nodes to query"));
@@ -121,9 +123,19 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                 return; // handled error
             }
 
-            // TODO: process response
-            console.log("NO ERROR... TODO");
-            // console.log(error, contact, nodeId, response);
+            // we have a response, it could be an Object or Array
+
+            if (Array.isArray(response)) {
+                console.log("RESPONSE ARRAY... TODO");
+                return;
+            }
+
+            // we have a response Object, found the contact! return it and stop
+            // the querying
+            callback(null, response);
+            query.done = true;
+            self.transport.removeListener('node', query.listener);
+            return;
         };
         self.transport.on('node', query.listener);
     }
@@ -142,6 +154,8 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
     self.queryCompletionCheck(query, callback);
 };
 
+// nodeId: String (base64) *required* Base64 encoded node id to find
+// callback: Function *required* callback to call with result
 Discover.prototype.find = function find (nodeId, callback) {
     var self = this;
 
@@ -240,7 +254,7 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
     // console.log("QUERY COMPLETION CHECK");
     // are we done?
     if (query.index == query.nodes.length
-        && query.ongoingRequests == 0) {
+        && query.ongoingRequests == 0 && !query.done) {
         // find out if any new nodes are closer than the closest
         // node in order to determine if we should keep going or
         // stop
