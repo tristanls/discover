@@ -32,7 +32,6 @@ OTHER DEALINGS IN THE SOFTWARE.
 "use strict";
 
 var events = require('events'),
-    net = require('net'),
     Discover = require('../index.js');
 
 var test = module.exports = {};
@@ -170,4 +169,4 @@ test['find() queries closest nodes if not found on first round by querying seed 
         test.deepEqual(contact.data, {foo: 'bar'});
         test.done();
     });
-}
+};

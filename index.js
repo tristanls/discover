@@ -31,6 +31,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 "use strict";
 
 var clone = require('clone'),
+    crypto = require('crypto'),
     KBucket = require('k-bucket'),
     TcpTransport = require('discover-tcp-transport');
 
@@ -196,10 +197,11 @@ Discover.prototype.find = function find (nodeId, callback) {
 
     // we pick the closest kBucket to chose nodes from as it will have the
     // most information about nodes closest to nodeId
-    var closestKBucket = self.kBuckets[closestKBuckets[0].id].kBucket;
+    var closestKBucketId = closestKBuckets[0].id;
+    var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
     // get three closest nodes
     var closestContacts = closestKBucket.closest(
-        {id: new Buffer(closestKBucket.id, "base64")}, 3);
+        {id: new Buffer(nodeId, "base64")}, 3);
 
     // closestContacts will contain contacts with id as a Buffer, we clone
     // the contacts so that we can have id be a base64 encoded String
@@ -334,9 +336,31 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
 
 Discover.prototype.register = function register (nodeId, vectorClock) {
     var self = this;
-    // there is no bootstrap procedure.. register does it! (I think)
+    
+    if (!nodeId) nodeId = crypto.createHash('sha1').digest('base64');
+    if (!vectorClock) vectorClock = 0;
+
+    if (!self.kBuckets[nodeId]) {
+        var kBucket = new KBucket({localNodeId: nodeId});
+        self.kBuckets[nodeId] = {
+            id: nodeId,
+            kBucket: kBucket
+        };
+    }
+
+    // TODO: fix announcing self.. the current implementation will simply
+    //       locate it's own kBucket (created just above) and then return
+    //       unreachable :/ .. need to delegate to find via seeds directly,
+    //       or bypass the "select closest kBucket" mechanism :/
+    self.find(nodeId, function () {});
+
+    return {
+        nodeId: nodeId,
+        vectorClock: vectorClock
+    };
 };
 
 Discover.prototype.unregister = function unregister (nodeId) {
     var self = this;
+    if (self.kBuckets[nodeId]) delete self.kBuckets[nodeId];
 };
