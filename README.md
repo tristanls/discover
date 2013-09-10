@@ -73,7 +73,7 @@ Used internally by `discover.find()` to maintain query state when looking for a 
 
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
-  * `announce`: _Boolean_ _(Default: false)_ _**CAUTION: reserved for internal use**_ If specified to `true` it indicates an announcement to the network so we ask the network instead of satisfying request locally
+  * `announce`: _Object_ _(Default: undefined)_ _**CAUTION: reserved for internal use**_ Contact object, if specified, it indicates an announcement to the network so we ask the network instead of satisfying request locally and the sender is the `announce` contact object.
 
 The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
 
@@ -84,12 +84,13 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 });
 ```
 
-#### discover.findViaSeeds(nodeId, callback)
+#### discover.findViaSeeds(nodeId, callback, [announce])
 
 _**CAUTION: reserved for internal use**_
 
   * `nodeId`: _String (base64)_ Base64 encoded node id to find.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
+  * `announce`: _Object_ _(Default: undefined)_ Contact object, if specified, it indicates an announcement and the sender is the `announce` contact object.
 
 Uses `seeds` instead of closest contacts (because those don't exist) to find the node with `nodeId`. The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
 
@@ -168,11 +169,14 @@ _NOTE: Unreachability of nodes depends on the transport. For example, transports
 
 _**WARNING**: Using TCP transport is meant primarily for development in a development environment. TCP transport exists because it is a low hanging fruit. It is most likely that it should be replaced with DTLS transport in production (maybe TLS if DTLS is not viable). There may also be a use-case for using UDP transport if communicating nodes are on a VPN/VPC. Only if UDP on a VPN/VPC seems not viable, should TCP transport be considered._
 
-#### transport.findNode(contact, nodeId)
+#### transport.findNode(contact, nodeId, sender)
 
   * `contact`: _Object_ The node to contact with request to find `nodeId`.
     * `id`: _String (base64)_ Base64 encoded contact node id.
   * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find.
+  * `sender`: _Object_ The sender of this request.
+    * `id`: _String (base64)_ Base64 encoded sender id.
+    * `data`: _Any_ Sender data.
 
 Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or otherwise shall be communicated by emitting a `node` event.
 
@@ -186,6 +190,9 @@ Issues a PING request to the `contact`. The transport will emit `unreachable` ev
 #### Event: `findNode`
 
   * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find.
+  * `sender`: _Object_ The contact making the request.
+    * `id`: _String (base64)_ Base64 encoded sender id.
+    * `data`: _Any_ Sender data.
   * `callback`: _Function_ The callback to call with the result of processing the FIND-NODE request.
     * `error`: _Error_ An error, if any.
     * `response`: _Object_ or _Array_ The response to FIND-NODE request.

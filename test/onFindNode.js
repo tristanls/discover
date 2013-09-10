@@ -38,23 +38,27 @@ var test = module.exports = {};
 
 test["on 'findNode' returns the contact with id and data if node is one of registered nodes"] = function (test) {
     test.expect(2);
-    var localBase64 = new Buffer("local").toString("base64");
+    var fooBase64 = new Buffer("foo").toString("base64");
+
+    var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
     var discover = new Discover({
         transport: transport
     });
-    discover.register({id: localBase64});
-    transport.emit('findNode', localBase64, function (error, contact) {
+    discover.register({id: fooBase64});
+    transport.emit('findNode', fooBase64, sender, function (error, contact) {
         test.ok(!error);
-        test.deepEqual(contact, {id: localBase64, vectorClock: 0});
+        test.deepEqual(contact, {id: fooBase64, vectorClock: 0});
+        test.done();
     });
-    test.done();
 };
 
 test["on 'findNode' returns the contact with id and data if node has been 'reached'"] = function (test) {
     test.expect(2);
     var fooBase64 = new Buffer("foo").toString("base64");
     var barBase64 = new Buffer("bar").toString("base64");
+
+    var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
     transport.findNode = function () {
         test.fail("used transport.findNode()");
@@ -63,11 +67,11 @@ test["on 'findNode' returns the contact with id and data if node has been 'reach
     discover.register({id: fooBase64});
     transport.emit('reached', {id: barBase64});
     // "bar" should now be in "foo" kBucket
-    transport.emit('findNode', barBase64, function (error, contact) {
+    transport.emit('findNode', barBase64, sender, function (error, contact) {
         test.ok(!error);
-        test.deepEqual(contact, {id: barBase64});
+        test.equal(contact.id, barBase64);
+        test.done();
     });
-    test.done();
 };
 
 test["on 'findNode' returns closest nodes if node is not one of registered nodes"] = function (test) {
@@ -78,6 +82,8 @@ test["on 'findNode' returns closest nodes if node is not one of registered nodes
     var barBase64 = new Buffer("bar").toString("base64");
     var basBase64 = new Buffer("bas").toString("base64");
     var bazBase64 = new Buffer("baz").toString("base64");
+
+    var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
     var discover = new Discover({
         transport: transport
@@ -86,9 +92,34 @@ test["on 'findNode' returns closest nodes if node is not one of registered nodes
     transport.emit('reached', {id: basBase64});
     transport.emit('reached', {id: bazBase64});
     // "bas" and "baz" should now be in "foo" kBucket
-    transport.emit('findNode', barBase64, function (error, contacts) {
+    transport.emit('findNode', barBase64, sender, function (error, contacts) {
         test.ok(!error);
         test.deepEqual(contacts, [{id: basBase64}, {id: bazBase64}]);
+        test.done();
     });
-    test.done();
+};
+
+test["on 'findNode' adds the sender to the closest KBucket to the sender"] = function (test) {
+    test.expect(4);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBuffer = new Buffer("bar");
+    var barBase64 = barBuffer.toString("base64");
+
+    var sender = {id: barBase64, data: 'bar', host: '127.0.0.1', port: 6999};
+    var transport = new events.EventEmitter();
+    var discover = new Discover({
+        // inlineTrace: true,
+        transport: transport
+    });
+    discover.register({id: fooBase64, data: 'foo'});
+    var kBucket = discover.kBuckets[fooBase64].kBucket;
+    transport.emit('findNode', barBase64, sender, function (error, contacts) {
+        test.ok(!error);
+        test.deepEqual(contacts, []);
+        var util = require('util');
+        var closest = kBucket.closest({id: barBuffer});
+        test.equal(closest.length, 1);
+        test.equal(closest[0].id.toString("base64"), barBase64);
+        test.done();
+    });
 };

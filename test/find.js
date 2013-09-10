@@ -52,7 +52,7 @@ test['find() calls callback with an error if no registered nodes and seeds are u
     test.expect(2);
     var fooBase64 = new Buffer("foo").toString("base64");
     var transport = new events.EventEmitter();
-    transport.findNode = function (contact, nodeId) {
+    transport.findNode = function (contact, nodeId, sender) {
         process.nextTick(function () {
             transport.emit('node', new Error('unreachable'), contact, nodeId);
         });
@@ -83,7 +83,7 @@ test['find() calls transport.findNode() on the seeds if no registered nodes'] = 
     ];
     var transport = new events.EventEmitter();
     var first = true;
-    transport.findNode = function (contact, nodeId) {
+    transport.findNode = function (contact, nodeId, sender) {
         if (first) {
             first = false;
             test.equal(contact.id, seeds[0].id);
@@ -110,7 +110,7 @@ test['find() returns found node if found node while contacting a seed on first r
         {id: barBase64, ip: '127.0.0.1', port: 6743}
     ];
     var transport = new events.EventEmitter();
-    transport.findNode = function (contact, nodeId) {
+    transport.findNode = function (contact, nodeId, sender) {
         if (contact.id == seeds[0].id) {
             process.nextTick(function () {
                 transport.emit('node', null, contact, nodeId, {
@@ -143,7 +143,7 @@ test['find() queries closest nodes if not found on first round by querying seed 
         {id: barBase64, ip: '127.0.0.1', port: 6743}
     ];
     var transport = new events.EventEmitter();
-    transport.findNode = function (contact, nodeId) {
+    transport.findNode = function (contact, nodeId, sender) {
         if (contact.id == seeds[1].id) {
             process.nextTick(function () {
                 transport.emit('node', null, contact, nodeId, [{
@@ -186,7 +186,7 @@ test['find() queries nodes from closest kBucket of a registered node'] = functio
     // console.log("baz", bazBase64);
     // console.log("fop", fopBase64);
     var transport = new events.EventEmitter();
-    transport.findNode = function (contact, nodeId) {
+    transport.findNode = function (contact, nodeId, sender) {
         if (contact.id == bazBase64) {
             process.nextTick(function () {
                 transport.emit('node', null, contact, nodeId, [{
