@@ -206,7 +206,7 @@ Issues a PING request to the `contact`. The transport will emit `unreachable` ev
 Emitted when another node issues a FIND-NODE request to this node.
 
 ```javascript
-transport.on('findNode', function (nodeId, callback) {
+transport.on('findNode', function (nodeId, sender, callback) {
     // this node knows the node with nodeId or is itself node with nodeId
     var error = null;
     return callback(error, contactWithNodeId);
@@ -216,7 +216,7 @@ transport.on('findNode', function (nodeId, callback) {
 A single `contactWithNodeId` shall be returned with the information identifying the contact corresponding to requested `nodeId`.
 
 ```javascript
-transport.on('findNode', function (nodeId, callback) {
+transport.on('findNode', function (nodeId, sender, callback) {
     // nodeId is unknown to this node, so it returns an array of nodes closer to it
     var error = null;
     return callback(error, closestContacts); 
@@ -228,7 +228,7 @@ An Array of `closestContacts` shall be returned if the `nodeId` is unknown to th
 If an error occurs and a request cannot be fulfilled, an error should be passed to the callback.
 
 ```javascript
-transport.on('findNode', function (nodeId, callback) {
+transport.on('findNode', function (nodeId, sender, callback) {
     // some error happened
     return callback(new Error("oh no!")); 
 });
