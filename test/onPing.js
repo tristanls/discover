@@ -32,7 +32,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 "use strict";
 
 var events = require('events'),
-    Discover = require('../index.js');
+    Discover = require('../index.js'),
+    KBucket = require('k-bucket');
 
 var test = module.exports = {};
 
@@ -66,6 +67,51 @@ test["on 'ping' forces transport.ping() of all old contacts"] = function (test) 
         {id: fuzBuffer});
 };
 
+test["on 'ping' removes old contact from this bucket if old contact is unreachable"] = function (test) {
+    // this test exists to make sure that if a closer k-bucket was inserted
+    // while we were checking reachability, while discover at top level will
+    // remove unreachable node from the closest k-bucket, this k-bucket might
+    // still have the unreachable node and no room to insert the new one
+    // even though it should be able to isnert the new node
+    test.expect(4);
+    var fooBuffer = new Buffer("foo");
+    var fooBufferBase64 = fooBuffer.toString("base64");
+    var barBuffer = new Buffer("bar");
+    var barBufferBase64 = barBuffer.toString("base64");
+    var bazBuffer = new Buffer("baz"); 
+    var bazBufferBase64 = bazBuffer.toString("base64");
+    var fopBuffer = new Buffer("fop").toString("base64");
+    var fopBufferBase64 = fopBuffer.toString("base64");
+
+    // assert test assumption that "baz" is closer to "foo" than "bar"
+    test.ok(KBucket.distance(bazBuffer, fooBuffer) < KBucket.distance(barBuffer, fooBuffer));
+    
+    var transport = new events.EventEmitter();
+    transport.findNode = function () {};
+    transport.ping = function (contact) {
+        test.equal(contact.id, fooBufferBase64);
+        discover.register({id: bazBufferBase64, data: 'baz'});
+        // "baz" bucket will now be closest to foo so top level 
+        // 'unreachable' handler will remove foo contact from "baz" bucket
+        // removing from "bar" bucket is tested in kBucket.remove override
+        transport.emit('unreachable', contact);
+    };
+
+    var discover = new Discover({
+        // inlineTrace: true,
+        transport: transport
+    });
+    var contact = discover.register({id: barBufferBase64, data: 'bar'});
+    transport.emit('reached', {id: fooBufferBase64});
+    test.ok(contact.id);
+    var kBucket = discover.kBuckets[contact.id].kBucket;
+    kBucket.remove = function (contact) {
+        test.equal(contact.id.toString("base64"), fooBufferBase64);
+        test.done();        
+    }
+    kBucket.emit('ping', [{id: fooBuffer}], {id: fopBuffer});    
+};
+
 test["on 'ping' adds new contact if old contact is unreachable"] = function (test) {
     test.expect(3);
     var fooBuffer = new Buffer("foo");
@@ -84,7 +130,7 @@ test["on 'ping' adds new contact if old contact is unreachable"] = function (tes
     test.ok(contact.id);
     var kBucket = discover.kBuckets[contact.id].kBucket;
     kBucket.add = function (contact) {
-        test.equal(contact.id.toString("base64"), barBuffer.toString("base64"));
+        test.equal(contact.id.toString("base64"), barBufferBase64);
         test.done();
     };
     kBucket.emit('ping', [{id: fooBuffer}], {id: barBuffer});

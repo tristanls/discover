@@ -545,6 +545,7 @@ Discover.prototype.register = function register (contact) {
                 if (oldContactIdsBase64.indexOf(contact.id) > -1) {
                     self.transport.removeListener('unreachable', unreachableListener);
                     self.transport.removeListener('reached', reachedListener);
+                    kBucket.remove({id: new Buffer(contact.id, "base64")});
                     kBucket.add(newContact);
                 }
             };
