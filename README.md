@@ -10,7 +10,13 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 ## Tests
 
+### Unit Tests
+
     npm test
+
+### Localhost Visual Trace Test
+
+    npm run-script localtest
 
 ## Overview
 

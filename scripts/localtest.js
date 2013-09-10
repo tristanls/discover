@@ -199,5 +199,7 @@ function continueLocalTest() {
         console.log('~script discover5:', util.inspect(discover5, false, null));
 
         console.log('~script listing of node contents complete');
+
+        setTimeout(function () { process.exit(); }, 2000);
     });
 };
