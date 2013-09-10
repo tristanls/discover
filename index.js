@@ -80,6 +80,8 @@ var Discover = module.exports = function Discover (options) {
         // we pick the closest kBucket to the node id of our contact to store
         // the data in, since they have the most space to accomodate near-by
         // node ids (inherent KBucket property)
+        // TODO: change self.kBuckets data structure so that this operation is
+        //       O(log n) instead of O(n)
         var closestKBuckets = [];
         var contactIdBuffer = new Buffer(contact.id, "base64");
         Object.keys(self.kBuckets).forEach(function (kBucketKey) {
@@ -114,6 +116,7 @@ util.inherits(Discover, events.EventEmitter);
 //          furthest
 //     node: 
 //       id: String (base64) *required* Base64 encoded contact id
+//   nodesMap: Object *required* Map to nodes present in `nodes`
 // callback: Function *required* callback to call with result
 Discover.prototype.executeQuery = function executeQuery (query, callback) {
     var self = this;
@@ -355,6 +358,7 @@ Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback) {
 //          furthest
 //     node: 
 //       id: String (base64) *required* Base64 encoded contact id
+//   nodesMap: Object *required* Map to nodes present in `nodes`
 // callback: Function *required* callback to call with result
 Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, callback) {
     var self = this;

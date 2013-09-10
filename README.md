@@ -39,6 +39,7 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
 #### new Discover(options)
 
   * `options`:
+    * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent FIND-NODE requests to the network per `find` request.
     * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will emit `~trace` events for debugging purposes.
     * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will log to console `~trace` messages for debugging purposes.
     * `seeds`: _Array_ _(Default: [])_ An array of seed `contact` Objects that the `transport` understands.
@@ -48,13 +49,25 @@ Creates a new Discover instance.
 
 The `seeds` are necessary if joining an existing Discover cluster. Discover will use these `seeds` to announce itself to other nodes in the cluster. If `seeds` are not provided, then it is assumed that this is a seed node, and other nodes will include this node's address in their `seeds` option. It all has to start somewhere.
 
+#### discover.executeQuery(query, callback) _reserved for internal use_
+
+  * `query`: _Object_ Object containing query state for this request.
+    * `nodeId`: _String (base64)_ Base64 encoded node id to find.
+    * `nodes`: _Array_ `contact`s to query for `nodeId` arranged from closest to furthest
+      * `node`:
+        * `id`: _String (base64)_ Base64 encoded contact id.
+    * `nodesMap`: _Object_ A map to the same `contact`s already present in `nodes` for O(1) access.
+  * `callback`: _Function_ The callback to call with result.
+
+Used internally by `discover.find()` to maintain query state when looking for a specific node on the network. It will launch up to `CONCURRENCY_CONSTANT` `findNode` requests via the `transport` and keep going until the node is found or there are no longer any nodes closer to it (not found). Additionally, this function reports unreachable and reached nodes to the appropriate `KBucket` which maintains the local node's awareness of the state of the network.
+
 #### discover.find(nodeId, callback, [announce])
 
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
-  * `announce`: _Boolean_ _(Default: false)_ _reserved for internal use_ If specified to `true` it indicates an announcement to the network so we ask the network instead of satisfying request locally
+  * `announce`: _Boolean_ _(Default: false)_ _**reserved for internal use**_ If specified to `true` it indicates an announcement to the network so we ask the network instead of satisfying request locally
 
-The `callback` is called with the result of searching for `nodeId`. The result will be a contact containing id, ip, and port of the node.
+The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
 
 ```javascript
 discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) {
@@ -63,10 +76,29 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 });
 ```
 
+#### discover.findViaSeeds(nodeId, callback) _reserved for internal use_
+
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find.
+  * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
+
+Uses `seeds` instead of closest contacts (because those don't exist) to find the node with `nodeId`. The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
+
+#### discover.queryCompletionCheck(query, callback) _reserved for internal use_
+
+  * `query`: _Object_ Object containing query state for this request.
+    * `nodeId`: _String (base64)_ Base64 encoded node id to find.
+    * `nodes`: _Array_ `contact`s to query for `nodeId` arranged from closest to furthest.
+      * `node`:
+        * `id`: _String (base64)_ Base64 encoded contact id.
+    * `nodesMap`: _Object_ A map to the same `contact`s already present in `nodes` for O(1) access.
+  * `callback`: _Function_ The callback to call with result.
+
+Checks if query completion criteria are met. If there are any new nodes to add to the query, organizes them accordingly and sets the query state to incorporate new node information. Stops and returns failure or success otherwise.
+
 #### discover.register(contact)
 
-  * `contact`: _Object_ Contact object to register
-    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ The contact id, base 64 encoded; will be created if not present
+  * `contact`: _Object_ Contact object to register.
+    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
   * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
@@ -74,14 +106,11 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 Registers a new node on the network with `contact.id`. Returns a `contact`:
 
 ```javascript
-{
+discover.register({
     id: 'Zm9v', // base64 encoded String representing nodeId
-    data: {
-        ip: '127.0.0.1',
-        port: 8080
-    },
+    data: 'foo',
     vectorClock: 0  // vector clock paired with the nodeId
-}
+});
 ```
 
 _NOTE: Current implementation creates a new k-bucket for every registered node id. It is important to remember that a k-bucket could store up to k*lg(n) contacts, where lg is log base 2, n is the number of registered node ids on the network, and k is the size of each k-bucket (by default 20). For 1 billion registered nodes on the network, each k-bucket could store around 20 * lg (1,000,000,000) = ~ 598 contacts. This isn't bad, until you have 1 million local entities for a total of 598,000,000 contacts plus k-bucket overhead, which starts to put real pressure on Node.js/V8 memory limit._
@@ -92,7 +121,7 @@ _NOTE: Current implementation creates a new k-bucket for every registered node i
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded;
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
-Unregisters previously registered `contact`, identified by `contact.id` and `contact.vectorClock`, from the network.
+Unregisters previously registered `contact` (identified by `contact.id` and `contact.vectorClock`) from the network.
 
 ### Transport Interface
 
@@ -110,25 +139,25 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
 
 #### transport.findNode(contact, nodeId)
 
-  * `contact`: _Object_ The node to contact with request to find `nodeId`
-    * `id`: _String (base64)_ Base64 encoded contact node id
-  * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find
+  * `contact`: _Object_ The node to contact with request to find `nodeId`.
+    * `id`: _String (base64)_ Base64 encoded contact node id.
+  * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find.
 
 Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or otherwise shall be communicated by emitting a `node` event.
 
 #### transport.ping(contact)
 
-  * `contact`: _Object_ contact to ping
-    * `id`: _String (base64)_ Base64 encoded contact node id
+  * `contact`: _Object_ Contact to ping.
+    * `id`: _String (base64)_ Base64 encoded contact node id.
 
 Issues a PING request to the `contact`. The transport will emit `unreachable` event if the `contact` is unreachable, or `reached` event otherwise.
 
 #### Event: `findNode`
 
-  * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find
-  * `callback`: _Function_ The callback to call with the result of processing the FIND-NODE request
-    * `error`: _Error_ if any
-    * `response`: _Object_ or _Array_ The response to FIND-NODE request
+  * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find.
+  * `callback`: _Function_ The callback to call with the result of processing the FIND-NODE request.
+    * `error`: _Error_ An error, if any.
+    * `response`: _Object_ or _Array_ The response to FIND-NODE request.
 
 Emitted when another node issues a FIND-NODE request to this node.
 
@@ -163,12 +192,12 @@ transport.on('findNode', function (nodeId, callback) {
 
 #### Event: `node`
 
-  * `error`: _Error_ An error, if one occurred
-  * `contact`: _Object_ The node that FIND-NODE request was sent to
-  * `nodeId`: _String_ The original node id requested to be found
-  * `response`: _Object_ or _Array_ The response from the queried `contact`
+  * `error`: _Error_ An error, if one occurred.
+  * `contact`: _Object_ The node that FIND-NODE request was sent to.
+  * `nodeId`: _String_ The original node id requested to be found.
+  * `response`: _Object_ or _Array_ The response from the queried `contact`.
 
-If `error` occurs, the transport encountered an error when issuing the `findNode` request to the `contact`. 
+If `error` occurs, the transport encountered an error when issuing the `findNode` request to the `contact`. `contact` and `nodeId` will also be provided in case of an error. `response` is to be undefined if an `error` occurs.
 
 `response` will be an Array if the `contact` does not contain the `nodeId` requested. In this case `response` will be a `contact` list of nodes closer to the `nodeId` that the queried node is aware of. The usual step is to next query the returned contacts with the FIND-NODE request.
 
@@ -177,14 +206,15 @@ If `error` occurs, the transport encountered an error when issuing the `findNode
 #### Event: `reached`
 
   * `contact`: _Object_ The contact that was reached when pinged.
-      * `id`: _String (base64)_ Base64 encoded contact node id
+      * `id`: _String (base64)_ Base64 encoded contact node id.
+      * `data`: _Any_ Data included with the contact.
 
 Emitted when a previously pinged `contact` is deemed reachable by the transport.
 
 #### Event: `unreachable`
 
   * `contact`: _Object_ The contact that was unreachable when pinged.
-      * `id`: _String (base64)_ Base64 encoded contact node id
+      * `id`: _String (base64)_ Base64 encoded contact node id.
 
 Emitted when a previously pinged `contact` is deemed unreachable by the transport.
 
@@ -200,6 +230,7 @@ This is roughly in order of current priority:
   * **TLS Transport** _(separate module)_
   * **DTLS Transport** _(separate module)_
   * **Performance**: Make it fast and small.
+    * **discover.kBuckets**: It should be a datastructure with _O(log n)_ operations.
 
 ### Other considerations
 
@@ -221,24 +252,37 @@ There is really nothing that I immediately see that would be preventing use of m
 
 ```javascript
 {
+    id: 'Zm9v', // base64 encoded String representing nodeId
+    data: 'foo',
     ip: '127.0.0.1',
-    port: '1234',
+    port: 8080,
     transport: 'tcp'
 }
 // or
 {
+    id: 'Zm9v', // base64 encoded String representing nodeId
+    data: 'foo'
     hostname: 'localhost',
     port: 80,
-    transport: 'http'
+    transport: 'http'    
 }
 // or maybe something like...
 {
-    ip: '127.0.0.1',
-    port: '1234',
-    transport: ['dtls', 'tls', 'tcp']
-    dtls: {
-        ip: '127.0.0.1',
-        port: '4321'
+    id: 'Zm9v', // base64 encoded String representing nodeId
+    data: 'foo',
+    transport: {
+        dtls: {
+            ip: '127.0.0.1',
+            port: '4321'
+        },
+        tls: {
+            ip: '127.0.0.1',
+            port: '1234'
+        },
+        tcp: {
+            ip: '127.0.0.1',
+            port: '5555'
+        }
     }
 }
 ```
