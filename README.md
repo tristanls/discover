@@ -55,7 +55,9 @@ Creates a new Discover instance.
 
 The `seeds` are necessary if joining an existing Discover cluster. Discover will use these `seeds` to announce itself to other nodes in the cluster. If `seeds` are not provided, then it is assumed that this is a seed node, and other nodes will include this node's address in their `seeds` option. It all has to start somewhere.
 
-#### discover.executeQuery(query, callback) _reserved for internal use_
+#### discover.executeQuery(query, callback)
+
+_**CAUTION: reserved for internal use**_
 
   * `query`: _Object_ Object containing query state for this request.
     * `nodeId`: _String (base64)_ Base64 encoded node id to find.
@@ -71,7 +73,7 @@ Used internally by `discover.find()` to maintain query state when looking for a 
 
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
-  * `announce`: _Boolean_ _(Default: false)_ _**reserved for internal use**_ If specified to `true` it indicates an announcement to the network so we ask the network instead of satisfying request locally
+  * `announce`: _Boolean_ _(Default: false)_ _**CAUTION: reserved for internal use**_ If specified to `true` it indicates an announcement to the network so we ask the network instead of satisfying request locally
 
 The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
 
@@ -82,14 +84,18 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 });
 ```
 
-#### discover.findViaSeeds(nodeId, callback) _reserved for internal use_
+#### discover.findViaSeeds(nodeId, callback)
+
+_**CAUTION: reserved for internal use**_
 
   * `nodeId`: _String (base64)_ Base64 encoded node id to find.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
 
 Uses `seeds` instead of closest contacts (because those don't exist) to find the node with `nodeId`. The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
 
-#### discover.getClosestContacts(nodeId, closestKBuckets) _reserved for internal use_
+#### discover.getClosestContacts(nodeId, closestKBuckets)
+
+_**CAUTION: reserved for internal use**_
 
   * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts to.
   * `closestKBuckets`: _Array_ Sorted array of `KBucket`s from closest to furthest from `nodeId`.
@@ -97,14 +103,18 @@ Uses `seeds` instead of closest contacts (because those don't exist) to find the
 
 Retrieves maximum of three closest contacts from the closest `KBucket`.
 
-#### discover.getClosestKBuckets(nodeId) _reserved for internal use_
+#### discover.getClosestKBuckets(nodeId)
+
+_**CAUTION: reserved for internal use**_
 
   * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts to.
   * Return: _Array_ List of closest `KBucket`s.
 
 Retrieves a sorted list of all `KBucket`s from closest to furthest.
 
-#### discover.queryCompletionCheck(query, callback) _reserved for internal use_
+#### discover.queryCompletionCheck(query, callback)
+
+_**CAUTION: reserved for internal use**_
 
   * `query`: _Object_ Object containing query state for this request.
     * `nodeId`: _String (base64)_ Base64 encoded node id to find.
