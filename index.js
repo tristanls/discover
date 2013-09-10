@@ -89,7 +89,7 @@ var Discover = module.exports = function Discover (options) {
         closestKBucket.add(clonedContact);
     });
 
-    // register a listener to handle inbound 'findNode' requests
+    // register a listener to handle transport 'findNode' events
     self.transport.on('findNode', function (nodeId, callback) {
         // check if nodeId is one of the locally registered nodes
         var localContactKBucket = self.kBuckets[nodeId];
@@ -126,18 +126,46 @@ var Discover = module.exports = function Discover (options) {
         return callback(null, contacts);        
     });
 
-    // register a listener to handle 'reached' events
+    // register a listener to handle transport 'reached' events
     self.transport.on('reached', function (contact) {
+        self.trace('reached ' + util.inspect(contact));
         // find closest KBucket to place reached contact in
         var closestKBuckets = self.getClosestKBuckets(contact.id);
-        var closestKBucket = self.kBuckets[closestKBuckets[0].id].kBucket;
+        if (closestKBuckets.length == 0) {
+            self.trace('no kBuckets for reached contact ' + util.inspect(contact));
+            return;
+        }
+        var closestKBucketId = closestKBuckets[0].id;
+        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
         if (!closestKBucket) {
             self.trace('no closest kBucket for reached contact ' + util.inspect(contact));
             return;
         }
         var clonedContact = clone(contact);
+        self.trace('adding ' + util.inspect(clonedContact) + ' to kBucket ' + closestKBucketId);
         clonedContact.id = new Buffer(contact.id, "base64");
         closestKBucket.add(clonedContact);
+    });
+
+    // register a listener to handle transport 'unreachable' events
+    self.transport.on('unreachable', function (contact) {
+        self.trace('unreachable ' + util.inspect(contact));
+        // find closest KBucket to remove unreachable contact from
+        var closestKBuckets = self.getClosestKBuckets(contact.id);
+        if (closestKBuckets.length == 0) {
+            self.trace('no kBuckets for unreachable contact ' + util.inspect(contact));
+            return;
+        }
+        var closestKBucketId = closestKBuckets[0].id;
+        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
+        if (!closestKBucket) {
+            self.trace('no closest kBucket for unreachable contact ' + util.inspect(contact));
+            return;
+        }
+        var clonedContact = clone(contact);
+        self.trace('removing ' + util.inspect(contact) + ' from kBucket ' + closestKBucketId);
+        clonedContact.id = new Buffer(contact.id, "base64");
+        closestKBucket.remove(clonedContact);
     });
 
     self.kBuckets = {};
