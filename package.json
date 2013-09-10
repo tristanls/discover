@@ -3,12 +3,13 @@
     "version": "0.0.0",
     "description": "Node discovery based on Kademlia DHT protocol",
     "scripts": {
+        "localtest": "node scripts/localtest.js",
         "test": "node scripts/test.js"
     },
     "main": "index.js",
     "dependencies": {
         "clone": "0.1.9",
-        "discover-tcp-transport": "0.1.0",
+        "discover-tcp-transport": "1.0.0",
         "k-bucket": "0.2.0"
     },
     "devDependencies": {
