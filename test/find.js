@@ -254,3 +254,21 @@ test['find() returns local node without querying the network'] = function (test)
         test.done();
     });
 };
+
+test['find() returns local kBucket data on node without querying the network'] = function (test) {
+    test.expect(2);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var transport = new events.EventEmitter();
+    transport.findNode = function () {
+        test.fail("queried the network via transport.findNode()");
+    };
+    var discover = new Discover({transport: transport});
+    discover.register({id: fooBase64, data: 'my data'});
+    transport.emit('reached', {id: barBase64, data: 'bar data'});
+    discover.find(barBase64, function (error, contact) {
+        test.ok(!error, error);
+        test.deepEqual(contact, {id: barBase64, data: 'bar data'});
+        test.done();
+    });
+};

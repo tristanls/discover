@@ -83,6 +83,21 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 
 Uses `seeds` instead of closest contacts (because those don't exist) to find the node with `nodeId`. The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
 
+#### discover.getClosestContacts(nodeId, closestKBuckets) _reserved for internal use_
+
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts to.
+  * `closestKBuckets`: _Array_ Sorted array of `KBucket`s from closest to furthest from `nodeId`.
+  * Return: _Array_ List of closest contacts.
+
+Retrieves maximum of three closest contacts from the closest `KBucket`.
+
+#### discover.getClosestKBuckets(nodeId) _reserved for internal use_
+
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts to.
+  * Return: _Array_ List of closest `KBucket`s.
+
+Retrieves a sorted list of all `KBucket`s from closest to furthest.
+
 #### discover.queryCompletionCheck(query, callback) _reserved for internal use_
 
   * `query`: _Object_ Object containing query state for this request.

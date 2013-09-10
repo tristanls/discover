@@ -80,28 +80,63 @@ var Discover = module.exports = function Discover (options) {
         // we pick the closest kBucket to the node id of our contact to store
         // the data in, since they have the most space to accomodate near-by
         // node ids (inherent KBucket property)
-        // TODO: change self.kBuckets data structure so that this operation is
-        //       O(log n) instead of O(n)
-        var closestKBuckets = [];
-        var contactIdBuffer = new Buffer(contact.id, "base64");
-        Object.keys(self.kBuckets).forEach(function (kBucketKey) {
-            var kBucket = self.kBuckets[kBucketKey];
-            var kBucketIdBuffer = new Buffer(kBucket.id, "base64");
-            closestKBuckets.push({
-                id: kBucket.id,
-                distance: KBucket.distance(contactIdBuffer, kBucketIdBuffer)
-            });
-        });
-
-        closestKBuckets = closestKBuckets.sort(function (a, b) {
-            return a.distance - b.distance;
-        });
-
+        var closestKBuckets = self.getClosestKBuckets(contact.id);
         var closestKBucketId = closestKBuckets[0].id;
         var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
         var clonedContact = clone(contact);
         self.trace('adding ' + util.inspect(clonedContact) + ' to kBucket ' + closestKBucketId);
-        clonedContact.id = contactIdBuffer;
+        clonedContact.id = new Buffer(contact.id, "base64");
+        closestKBucket.add(clonedContact);
+    });
+
+    // register a listener to handle inbound 'findNode' requests
+    self.transport.on('findNode', function (nodeId, callback) {
+        // check if nodeId is one of the locally registered nodes
+        var localContactKBucket = self.kBuckets[nodeId];
+        if (localContactKBucket) {
+            return callback(null, localContactKBucket.contact);
+        }
+
+        var closestKBuckets = self.getClosestKBuckets(nodeId);
+        var closestContacts = self.getClosestContacts(nodeId, closestKBuckets);
+
+        if (closestContacts.length == 0) {
+            return callback(null, []);
+        }
+
+        // check for exact match
+        if (closestContacts[0].id.toString("base64") == nodeId) {
+            var contact = {id: nodeId};
+            if (closestContacts[0].data) {
+                contact.data = closestContacts[0].data;
+            }
+            return callback(null, contact);
+        }
+        
+        // return closest contacts
+        var contacts = [];
+        closestContacts.forEach(function (closeContact) {
+            var contact = {id: closeContact.id.toString("base64")};
+            if (closeContact.data) {
+                contact.data = data;
+            }
+            contacts.push(contact);
+        });
+
+        return callback(null, contacts);        
+    });
+
+    // register a listener to handle 'reached' events
+    self.transport.on('reached', function (contact) {
+        // find closest KBucket to place reached contact in
+        var closestKBuckets = self.getClosestKBuckets(contact.id);
+        var closestKBucket = self.kBuckets[closestKBuckets[0].id].kBucket;
+        if (!closestKBucket) {
+            self.trace('no closest kBucket for reached contact ' + util.inspect(contact));
+            return;
+        }
+        var clonedContact = clone(contact);
+        clonedContact.id = new Buffer(contact.id, "base64");
         closestKBucket.add(clonedContact);
     });
 
@@ -255,44 +290,26 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
         return self.findViaSeeds(nodeId, callback);
     }
 
-    var closestKBuckets = [];
-    var nodeIdBuffer = new Buffer(nodeId, "base64");
-    Object.keys(self.kBuckets).forEach(function (kBucketKey) {
-        var kBucket = self.kBuckets[kBucketKey];
-        var kBucketIdBuffer = new Buffer(kBucket.id, "base64");
-        closestKBuckets.push({
-            id: kBucket.id,
-            distance: KBucket.distance(nodeIdBuffer, kBucketIdBuffer)
-        });
-    });
-
-    closestKBuckets = closestKBuckets.sort(function (a, b) {
-        return a.distance - b.distance;
-    });
+    var closestKBuckets = self.getClosestKBuckets(nodeId);
 
     self.trace(traceHeader + 'have ' + closestKBuckets.length + ' kBuckets');
 
-    // we pick the closest kBucket to chose nodes from as it will have the
-    // most information about nodes closest to nodeId, if closest kBucket has
-    // no nodes, we pick the next one, until we find a kBucket with nodes in it
-    // or reach the end
-    var closestContacts = [];
-    var closestKBucketsIndex = 0;
-    while (closestContacts.length == 0 
-            && closestKBucketsIndex < closestKBuckets.length) {
-        var closestKBucketId = closestKBuckets[closestKBucketsIndex].id;
-        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
-        // get three closest nodes
-        closestContacts = closestKBucket.closest(
-            {id: new Buffer(nodeId, "base64")}, 3);
-        closestKBucketsIndex++;
-    }
+    var closestContacts = self.getClosestContacts(nodeId, closestKBuckets);
 
     // if none of our local kBuckets have any contacts (should only happend
     // when bootstrapping), talk to the seeds
     if (closestContacts.length == 0) {
         self.trace(traceHeader + 'no contacts in kBuckets, delegating to findViaSeeds()');
         return self.findViaSeeds(nodeId, callback);
+    }
+
+    // check if the closest contact is actually the node we are looking for
+    if (closestContacts[0].id.toString("base64") == nodeId) {        
+        var contact = {id: closestContacts[0].id.toString("base64")};
+        if (closestContacts[0].data) {
+            contact.data = closestContacts[0].data;
+        }
+        return callback(null, contact);
     }
 
     // closestContacts will contain contacts with id as a Buffer, we clone
@@ -302,7 +319,7 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
     closestContacts.forEach(function (contact) {
         var clonedContact = clone(contact);
         clonedContact.id = clonedContact.id.toString("base64");
-        clonedContact.kBucket = closestKBucket; // for reference later
+        clonedContact.kBucket = closestKBuckets[0]; // for reference later
         closestNodes.push(clonedContact);
         nodesMap[clonedContact.id] = clonedContact;
     });
@@ -350,6 +367,56 @@ Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback) {
         nodesMap: nodesMap
     };
     self.executeQuery(query, callback);
+};
+
+// nodeId: String (base64) *required* Base64 encoded node id to find
+// closestKBuckets: Array KBuckets sorted from closest to furthest
+// Return: the list of closest contacts
+Discover.prototype.getClosestContacts = function getClosestContacts (nodeId, closestKBuckets) {
+    var self = this;
+
+    // we pick the closest kBucket to chose nodes from as it will have the
+    // most information about nodes closest to nodeId, if closest kBucket has
+    // no nodes, we pick the next one, until we find a kBucket with nodes in it
+    // or reach the end
+    var closestContacts = [];
+    var closestKBucketsIndex = 0;
+    while (closestContacts.length == 0 
+            && closestKBucketsIndex < closestKBuckets.length) {
+        var closestKBucketId = closestKBuckets[closestKBucketsIndex].id;
+        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
+        // get three closest nodes
+        closestContacts = closestKBucket.closest(
+            {id: new Buffer(nodeId, "base64")}, 3);
+        closestKBucketsIndex++;
+    }
+
+    return closestContacts;
+};
+
+// nodeId: String (base64) *required* Base64 encoded node id to find
+// Return: the list of closest kBuckets
+Discover.prototype.getClosestKBuckets = function getClosestKBuckets (nodeId) {
+    var self = this;
+
+    // TODO: change self.kBuckets data structure so that this operation is
+    //       O(log n) instead of O(n)
+    var closestKBuckets = [];
+    var nodeIdBuffer = new Buffer(nodeId, "base64");
+    Object.keys(self.kBuckets).forEach(function (kBucketKey) {
+        var kBucket = self.kBuckets[kBucketKey];
+        var kBucketIdBuffer = new Buffer(kBucket.id, "base64");
+        closestKBuckets.push({
+            id: kBucket.id,
+            distance: KBucket.distance(nodeIdBuffer, kBucketIdBuffer)
+        });
+    });
+
+    closestKBuckets = closestKBuckets.sort(function (a, b) {
+        return a.distance - b.distance;
+    });
+
+    return closestKBuckets;
 };
 
 // query: Object *required* object containing query state for this request
