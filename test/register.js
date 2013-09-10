@@ -49,6 +49,19 @@ test['register() creates a new kBucket from randomly generated contact.id'] = fu
     test.done();
 };
 
+test["register() registers 'ping' listener on newly created kBucket"] = function (test) {
+    test.expect(3);
+    var transport = new events.EventEmitter();
+    transport.findNode = function (contact, nodeId) {};
+    var discover = new Discover({transport: transport});
+    var contact = discover.register({data: 'foo'});
+    test.ok(contact.id);
+    var kBucket = discover.kBuckets[contact.id].kBucket;
+    test.ok(kBucket);
+    test.equal(kBucket.listeners('ping').length, 1);
+    test.done();
+};
+
 test['register() stores registered contact info with newly created kBucket'] = function (test) {
     test.expect(1);
     var transport = new events.EventEmitter();

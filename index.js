@@ -538,6 +538,38 @@ Discover.prototype.register = function register (contact) {
 
     if (!self.kBuckets[contact.id]) {
         var kBucket = new KBucket({localNodeId: contact.id});
+        kBucket.on('ping', function (oldContacts, newContact) {
+            // ping all the old contacts and if one does not respond, remove it
+            var oldContactIdsBase64 = [];
+            var unreachableListener = function (contact) {
+                if (oldContactIdsBase64.indexOf(contact.id) > -1) {
+                    self.transport.removeListener('unreachable', unreachableListener);
+                    self.transport.removeListener('reached', reachedListener);
+                    kBucket.add(newContact);
+                }
+            };
+            var reachedCount = 0;
+            var reachedListener = function (contact) {
+                if (oldContactIdsBase64.indexOf(contact.id) > -1) {
+                    reachedCount++;
+                    if (reachedCount == oldContactIdsBase64.length) {
+                        // all contacts were reached, won't be adding new one
+                        self.transport.removeListener(
+                            'unreachable', unreachableListener);
+                        self.transport.removeListener(
+                            'reached', reachedListener);
+                    }
+                }
+            };
+            self.transport.on('reached', reachedListener);
+            self.transport.on('unreachable', unreachableListener);
+            oldContacts.forEach(function (oldContact) {
+                var contact = clone(oldContact);
+                contact.id = oldContact.id.toString("base64");
+                oldContactIdsBase64.push(contact.id);
+                self.transport.ping(contact);
+            });
+        });
         self.kBuckets[contact.id] = {
             contact: contact,
             id: contact.id,
