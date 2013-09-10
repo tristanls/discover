@@ -36,6 +36,12 @@ Second, I wanted to learn and commit to intuition the implementation of Kademlia
 
 Node ids in Discover are represented as base64 encoded Strings. This is because the default generated node ids (SHA-1 hashes) could be unsafe to print. `base64` encoding was picked over `hex` encoding because it takes up less space when printed or serialized in ASCII over the wire.
 
+**Public API**
+  * [new Discover(options)](#new-discoveroptions)
+  * [discover.find(nodeId, callback, \[announce\])](#discoverfindnodeid-callback-announce)
+  * [discover.register(contact)](#discoverregistercontact)
+  * [discover.unregister(contact)](#discoverunregistercontact)
+
 #### new Discover(options)
 
   * `options`:
@@ -130,7 +136,7 @@ discover.register({
 
 _NOTE: Current implementation creates a new k-bucket for every registered node id. It is important to remember that a k-bucket could store up to k*lg(n) contacts, where lg is log base 2, n is the number of registered node ids on the network, and k is the size of each k-bucket (by default 20). For 1 billion registered nodes on the network, each k-bucket could store around 20 * lg (1,000,000,000) = ~ 598 contacts. This isn't bad, until you have 1 million local entities for a total of 598,000,000 contacts plus k-bucket overhead, which starts to put real pressure on Node.js/V8 memory limit._
 
-#### discover.unregister(contact);
+#### discover.unregister(contact)
 
   * `contact`: _Object_ Contact object to register
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded;
