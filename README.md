@@ -175,6 +175,15 @@ _NOTE: Unreachability of nodes depends on the transport. For example, transports
 
 _**WARNING**: Using TCP transport is meant primarily for development in a development environment. TCP transport exists because it is a low hanging fruit. It is most likely that it should be replaced with DTLS transport in production (maybe TLS if DTLS is not viable). There may also be a use-case for using UDP transport if communicating nodes are on a VPN/VPC. Only if UDP on a VPN/VPC seems not viable, should TCP transport be considered._
 
+**Transport Interface Specification**
+  * [transport.findNode(contact, nodeId, sender)](#transportfindnodecontact-nodeid-sender)
+  * [transport.ping(contact, sender)](#transportpingcontact-sender)
+  * [Event 'findNode'](#event-findnode)
+  * [Event 'node'](#event-node)
+  * [Event 'ping'](#event-ping)
+  * [Event 'reached'](#event-reached)
+  * [Event 'unreachable'](#event-unreachable)
+
 #### transport.findNode(contact, nodeId, sender)
 
   * `contact`: _Object_ The node to contact with request to find `nodeId`.
@@ -186,10 +195,13 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
 
 Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or otherwise shall be communicated by emitting a `node` event.
 
-#### transport.ping(contact)
+#### transport.ping(contact, sender)
 
   * `contact`: _Object_ Contact to ping.
     * `id`: _String (base64)_ Base64 encoded contact node id.
+  * `sender`: _Object_ The sender of this request.
+    * `id`: _String (base64)_ Base64 encoded sender id.
+    * `data`: _Any_ Sender data.
 
 Issues a PING request to the `contact`. The transport will emit `unreachable` event if the `contact` is unreachable, or `reached` event otherwise.
 
@@ -246,6 +258,38 @@ If `error` occurs, the transport encountered an error when issuing the `findNode
 `response` will be an Array if the `contact` does not contain the `nodeId` requested. In this case `response` will be a `contact` list of nodes closer to the `nodeId` that the queried node is aware of. The usual step is to next query the returned contacts with the FIND-NODE request.
 
 `response` will be an Object if the `contact` knows of the `nodeId`. In other words, the node has been found, and `response` is a `contact` object.
+
+#### Event: `ping`
+
+  * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id being pinged.
+  * `sender`: _Object_ The contact making the request.
+    * `id`: _String (base64)_ Base64 encoded sender node id.
+    * `data`: _Any_ Sender node data.
+  * `callback`: _Function_ The callback to call with the result of processing the PING request.
+    * `error`: _Error_ An error, if any.
+    * `response`: _Object_ or _Array_ The response to PING request, if any.
+
+Emitted when another node issues a PING request to this node.
+
+```javascript
+var tcpTransport = require('discover-tcp-transport');
+tcpTransport.on('ping', function (nodeId, sender, callback) {
+    // ... verify that we have the exact node specified by nodeId
+    return callback(null, contact); 
+});
+```
+
+In the above example `contact` is an Object representing the answer to `ping` query.
+
+If the exact node specified by nodeId does not exist, an error shall be returned as shown below:
+
+```javascript
+var tcpTransport = require('discover-tcp-transport');
+tcpTransport.on('ping', function (nodeId, sender, callback) {
+    // ...we don't have the nodeId specified
+    return callback(true); 
+});
+```
 
 #### Event: `reached`
 
