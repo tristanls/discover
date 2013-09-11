@@ -664,6 +664,27 @@ Discover.prototype.register = function register (contact) {
     return clone(contact); // don't leak internal implementation
 };
 
+Discover.prototype.unreachable = function unreachable (contact) {
+    var self = this;
+    self.trace('unreachable(' + util.inspect(contact) + ')');
+    // find closest KBucket to remove unreachable contact from
+    var closestKBuckets = self.getClosestKBuckets(contact.id);
+    if (closestKBuckets.length == 0) {
+        self.trace('no kBuckets for unreachable(contact) ' + util.inspect(contact));
+        return;
+    }
+    var closestKBucketId = closestKBuckets[0].id;
+    var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
+    if (!closestKBucket) {
+        self.trace('no closest kBucket for unreachable(contact) ' + util.inspect(contact));
+        return;
+    }
+    var clonedContact = clone(contact);
+    self.trace('removing ' + util.inspect(contact) + ' from kBucket ' + closestKBucketId);
+    clonedContact.id = new Buffer(contact.id, "base64");
+    closestKBucket.remove(clonedContact);
+};
+
 Discover.prototype.unregister = function unregister (contact) {
     var self = this;
     var kBucket = self.kBuckets[contact.id];

@@ -46,6 +46,7 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
   * [new Discover(options)](#new-discoveroptions)
   * [discover.find(nodeId, callback, \[announce\])](#discoverfindnodeid-callback-announce)
   * [discover.register(contact)](#discoverregistercontact)
+  * [discover.unreachable(contact)](#discoverunreachablecontact)
   * [discover.unregister(contact)](#discoverunregistercontact)
 
 #### new Discover(options)
@@ -153,10 +154,32 @@ discover.register({
 
 _NOTE: Current implementation creates a new k-bucket for every registered node id. It is important to remember that a k-bucket could store up to k*lg(n) contacts, where lg is log base 2, n is the number of registered node ids on the network, and k is the size of each k-bucket (by default 20). For 1 billion registered nodes on the network, each k-bucket could store around 20 * lg (1,000,000,000) = ~ 598 contacts. This isn't bad, until you have 1 million local entities for a total of 598,000,000 contacts plus k-bucket overhead, which starts to put real pressure on Node.js/V8 memory limit._
 
+#### discover.unreachable(contact)
+
+  * `contact`: _Object_ Contact object to report unreachable
+    * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to report unreachable.
+
+Reports the `contact` as unreachable in case Discover is storing outdated information. This can happen because Discover is a local cache of the global state of the network. If a change occurs, it may not immediately propagate to the local Discover instance.
+
+If it is desired to get the latest `contact` that is unreachable, the following code shows an example:
+
+```javascript
+discover.find("Zm9v", function (error, contact) {
+    // got contact
+    // attempt to connect ... and fail :(
+    discover.unreachable(contact);
+    discover.find(contact.id, function (error, contact) {
+        // new contact will be found in the network
+        // or an error if it cannot be found
+    });
+});
+```
+
 #### discover.unregister(contact)
 
   * `contact`: _Object_ Contact object to register
-    * `id`: _String (base64)_ The previously registered contact id, base 64 encoded;
+    * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
 Unregisters previously registered `contact` (identified by `contact.id` and `contact.vectorClock`) from the network.
