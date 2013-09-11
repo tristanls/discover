@@ -9,7 +9,7 @@
     "main": "index.js",
     "dependencies": {
         "clone": "0.1.9",
-        "discover-tcp-transport": "1.0.2",
+        "discover-tcp-transport": "2.0.0",
         "k-bucket": "0.2.0"
     },
     "devDependencies": {
