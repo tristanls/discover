@@ -1,6 +1,6 @@
 /*
 
-onPing.js - kBucket.emit('ping', ...) test
+onKBucketPing.js - kBucket.emit('ping', ...) test
 
 The MIT License (MIT)
 

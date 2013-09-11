@@ -95,7 +95,7 @@ var Discover = module.exports = function Discover (options) {
         // check if nodeId is one of the locally registered nodes
         var localContactKBucket = self.kBuckets[nodeId];
         if (localContactKBucket) {
-            return callback(null, localContactKBucket.contact);
+            callback(null, localContactKBucket.contact);
         }
 
         var closestKBuckets = self.getClosestKBuckets(nodeId);
@@ -121,6 +121,9 @@ var Discover = module.exports = function Discover (options) {
             }
         }
 
+        // check if we already responded prior to processing the sender
+        if (localContactKBucket) return; 
+
         if (closestContacts.length == 0) {
             return callback(null, []);
         }
@@ -143,6 +146,36 @@ var Discover = module.exports = function Discover (options) {
         });
 
         return callback(null, contacts);        
+    });
+
+    // register a listener to handle transport 'ping' events
+    self.transport.on('ping', function (nodeId, sender, callback) {
+        self.trace("on 'ping' - nodeId: " + nodeId + ", sender: " + util.inspect(sender));
+        // check if nodeId is one of the locally registered nodes
+        var localContactKBucket = self.kBuckets[nodeId];
+        if (localContactKBucket) {
+            callback(null, localContactKBucket.contact);
+        } else {
+            // the nodeId is not one of the locally registered nodes, ping fail 
+            callback(true);
+        }
+
+        // add the sender
+        var senderClosestKBuckets = self.getClosestKBuckets(sender.id);
+        if (senderClosestKBuckets.length == 0) {
+            self.trace('no kBuckets for ping sender ' + util.inspect(sender));
+        } else {
+            var senderClosestKBucketId = senderClosestKBuckets[0].id;
+            var senderClosestKBucket = self.kBuckets[senderClosestKBucketId].kBucket;
+            if (!senderClosestKBucket) {
+                self.trace('no closest kBucket for ping sender ' + util.inspect(sender));
+            } else {
+                var clonedSender = clone(sender);
+                self.trace('adding ' + util.inspect(clonedSender) + ' to kBucket ' + senderClosestKBucketId);
+                clonedSender.id = new Buffer(clonedSender.id, "base64");
+                senderClosestKBucket.add(clonedSender);
+            }
+        }
     });
 
     // register a listener to handle transport 'reached' events
@@ -606,11 +639,12 @@ Discover.prototype.register = function register (contact) {
             };
             self.transport.on('reached', reachedListener);
             self.transport.on('unreachable', unreachableListener);
+            var sender = self.kBuckets[contact.id].contact;
             oldContacts.forEach(function (oldContact) {
                 var contact = clone(oldContact);
                 contact.id = oldContact.id.toString("base64");
                 oldContactIdsBase64.push(contact.id);
-                self.transport.ping(contact);
+                self.transport.ping(contact, sender);
             });
         });
         self.kBuckets[contact.id] = {
