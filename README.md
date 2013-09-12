@@ -42,6 +42,8 @@ Second, I wanted to learn and commit to intuition the implementation of Kademlia
 
 Node ids in Discover are represented as base64 encoded Strings. This is because the default generated node ids (SHA-1 hashes) could be unsafe to print. `base64` encoding was picked over `hex` encoding because it takes up less space when printed or serialized in ASCII over the wire.
 
+_For more detailed documentation including private methods see [Discover doc](docs/Discover.md)_
+
 **Public API**
   * [new Discover(options)](#new-discoveroptions)
   * [discover.find(nodeId, callback, \[announce\])](#discoverfindnodeid-callback-announce)
@@ -62,20 +64,6 @@ Creates a new Discover instance.
 
 The `seeds` are necessary if joining an existing Discover cluster. Discover will use these `seeds` to announce itself to other nodes in the cluster. If `seeds` are not provided, then it is assumed that this is a seed node, and other nodes will include this node's address in their `seeds` option. It all has to start somewhere.
 
-#### discover.executeQuery(query, callback)
-
-_**CAUTION: reserved for internal use**_
-
-  * `query`: _Object_ Object containing query state for this request.
-    * `nodeId`: _String (base64)_ Base64 encoded node id to find.
-    * `nodes`: _Array_ `contact`s to query for `nodeId` arranged from closest to furthest
-      * `node`:
-        * `id`: _String (base64)_ Base64 encoded contact id.
-    * `nodesMap`: _Object_ A map to the same `contact`s already present in `nodes` for O(1) access.
-  * `callback`: _Function_ The callback to call with result.
-
-Used internally by `discover.find()` to maintain query state when looking for a specific node on the network. It will launch up to `CONCURRENCY_CONSTANT` `findNode` requests via the `transport` and keep going until the node is found or there are no longer any nodes closer to it (not found). Additionally, this function reports unreachable and reached nodes to the appropriate `KBucket` which maintains the local node's awareness of the state of the network.
-
 #### discover.find(nodeId, callback, [announce])
 
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
@@ -90,49 +78,6 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
     console.dir(contact); 
 });
 ```
-
-#### discover.findViaSeeds(nodeId, callback, [announce])
-
-_**CAUTION: reserved for internal use**_
-
-  * `nodeId`: _String (base64)_ Base64 encoded node id to find.
-  * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
-  * `announce`: _Object_ _(Default: undefined)_ Contact object, if specified, it indicates an announcement and the sender is the `announce` contact object.
-
-Uses `seeds` instead of closest contacts (because those don't exist) to find the node with `nodeId`. The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
-
-#### discover.getClosestContacts(nodeId, closestKBuckets)
-
-_**CAUTION: reserved for internal use**_
-
-  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts to.
-  * `closestKBuckets`: _Array_ Sorted array of `KBucket`s from closest to furthest from `nodeId`.
-  * Return: _Array_ List of closest contacts.
-
-Retrieves maximum of three closest contacts from the closest `KBucket`.
-
-#### discover.getClosestKBuckets(nodeId)
-
-_**CAUTION: reserved for internal use**_
-
-  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts to.
-  * Return: _Array_ List of closest `KBucket`s.
-
-Retrieves a sorted list of all `KBucket`s from closest to furthest.
-
-#### discover.queryCompletionCheck(query, callback)
-
-_**CAUTION: reserved for internal use**_
-
-  * `query`: _Object_ Object containing query state for this request.
-    * `nodeId`: _String (base64)_ Base64 encoded node id to find.
-    * `nodes`: _Array_ `contact`s to query for `nodeId` arranged from closest to furthest.
-      * `node`:
-        * `id`: _String (base64)_ Base64 encoded contact id.
-    * `nodesMap`: _Object_ A map to the same `contact`s already present in `nodes` for O(1) access.
-  * `callback`: _Function_ The callback to call with result.
-
-Checks if query completion criteria are met. If there are any new nodes to add to the query, organizes them accordingly and sets the query state to incorporate new node information. Stops and returns failure or success otherwise.
 
 #### discover.register(contact)
 
@@ -336,9 +281,10 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 This is roughly in order of current priority:
 
   * **Interface Specification**: The interface points between `discover`, `transport`, and `k-bucket` are still experimental but are quickly converging on what they need to be in order to support the functionality
+    * **storage refactoring**: There emerged (obvious in retrospect) a "storage" abstraction during the implementation of `discover` that is higher level than a `k-bucket` but that still seems to be worth extracting. 
   * **Implementation Correctness**: Gain confidence that the protocol functions as expected. This should involve running a lot of nodes and measuring information distribution latency and accuracy.
+  * **TLS Transport** _(separate module)_ or it might make sense to change the TCP Transport into Net Transport and include within both TCP and TLS.
   * **UDP Transport** _(separate module)_
-  * **TLS Transport** _(separate module)_
   * **DTLS Transport** _(separate module)_
   * **Performance**: Make it fast and small.
     * **discover.kBuckets**: It should be a datastructure with _O(log n)_ operations.
