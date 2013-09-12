@@ -282,8 +282,7 @@ If `error` occurs, the transport encountered an error when issuing the `findNode
 Emitted when another node issues a PING request to this node.
 
 ```javascript
-var tcpTransport = require('discover-tcp-transport');
-tcpTransport.on('ping', function (nodeId, sender, callback) {
+transport.on('ping', function (nodeId, sender, callback) {
     // ... verify that we have the exact node specified by nodeId
     return callback(null, contact); 
 });
@@ -294,8 +293,7 @@ In the above example `contact` is an Object representing the answer to `ping` qu
 If the exact node specified by nodeId does not exist, an error shall be returned as shown below:
 
 ```javascript
-var tcpTransport = require('discover-tcp-transport');
-tcpTransport.on('ping', function (nodeId, sender, callback) {
+transport.on('ping', function (nodeId, sender, callback) {
     // ...we don't have the nodeId specified
     return callback(true); 
 });
