@@ -20,21 +20,50 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 ## Overview
 
-Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. Discover is implemented using a stripped down version of the Kademlia DHT. It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
+Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. It enables point-to-point communications without pre-defined architecture and without a centralized router or centralized messaging. 
 
-An enhancement _(maybe)_ on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the node with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
+It is worth highlighting that Discover is _only_ a discovery mechanism. You can find out where a node is located (it's hostname and port, for example), but to communicate with it, you should have a way of doing that yourself.
 
-Each Discover node is meant to store many entities that correspond to the same "physical" node. It functions as an external "gateway" of sorts to beyond the local environment. For example, if a process wants to send a message to another process that is on a remote system somewhere, Discover enables distributed master-less correlation of that process' id with it's physical location for message delivery (or delivery failure if it cannot be found).
+Each Discover instance stores information on numerous nodes. Each instance also functions as an external "gateway" of sorts to beyond the local environment. For example, if a local process wants to send a message to a remote process somewhere, Discover enables distributed master-less correlation of that remote process' node id with it's physical location so that a point-to-point link can be made (or failure reported if the contact cannot be located).
 
-It is worth highlighting that Discover is _only_ a discovery mechanism. You can find out where a node is (it's IP and port, for example), but to talk to it, you should have a way of doing that yourself.
+### Contacts
+
+Discover manages information about _nodes_ via maintaining node information in a structure called a _contact_. A contact stores the details of a particular node on the network.
+
+A contact is a JavaScript object that consists of `contact.id`, `contact.data`, and `contact.transport`. These are the only properties that are guaranteed not to be changed by Discover.
+
+  * `id`: _String (base64)_ A globally unique Base64 encoded node id.
+  * `data`: _Any_ Any data that should be included with this contact when it is retrieved by others on the network. This should be a "serializable" structure (no circular references) so that it can be `JSON.stringify()`ed.
+  * `transport`: _Any_ Any data that the transport mechanism requires for operation. Similarly to `data`, it should be a "serializable" structure so that it can be `JSON.stringify()`ed.
+
+Example contact with TCP Transport information:
+
+```javascript
+var contact = {
+    id: "Zm9v", // Base64 encoded String representing node id
+    data: "foo", // any data (could be {foo: "bar"}, or ["foo", "bar"], etc.)
+    transport: {
+        host: "foo.bar.com", // or "localhost", "127.0.0.1", etc...
+        port: 6742
+    }
+};
+```
+
+### Technical Origin Details
+
+Discover is implemented using a stripped down version of the Kademlia Distributed Hash Table (DHT). It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
+
+An enhancement _(maybe)_ on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism _(this is still a work in progress at this point and not exposed in a functioning way)_. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the contact with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
 
 ### Why Discover?
 
-There are two reasons.
+There are three reasons.
 
-First, Discover exists because every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation. 
+Discover grew out of my experience with building messaging for a Node.js Platform as a Service based on an Actor Model of Computation. I did not like having a centralized messaging service that could bring down the entire platform. Messaging should be decentralized, which led to a Kademlia DHT-based implementation. _see: [Technical Origin Details](#technicalorigindetails)_
 
-Second, I wanted to learn and commit to intuition the implementation of Kademlia DHT so that I can apply that knowledge in other projects. This way, in case the first reason becomes invalid, there's still this one.
+Every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation. 
+
+Lastly, I wanted to learn and commit to intuition the implementation of Kademlia DHT so that I can apply that knowledge in other projects.
 
 ## Documentation
 
