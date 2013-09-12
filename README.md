@@ -113,6 +113,7 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
   * `contact`: _Object_ Contact object to register.
     * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
   * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
 
@@ -122,6 +123,10 @@ Registers a new node on the network with `contact.id`. Returns a `contact`:
 discover.register({
     id: 'Zm9v', // base64 encoded String representing nodeId
     data: 'foo',
+    transport: {
+        host: "foo.bar.com", // or "localhost", "127.0.0.1", etc...
+        port: 6742
+    },
     vectorClock: 0  // vector clock paired with the nodeId
 });
 ```
@@ -187,10 +192,12 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
 
   * `contact`: _Object_ The node to contact with request to find `nodeId`.
     * `id`: _String (base64)_ Base64 encoded contact node id.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.     
   * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find.
   * `sender`: _Object_ The sender of this request.
     * `id`: _String (base64)_ Base64 encoded sender id.
     * `data`: _Any_ Sender data.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
 
 Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or otherwise shall be communicated by emitting a `node` event.
 
@@ -198,9 +205,11 @@ Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or other
 
   * `contact`: _Object_ Contact to ping.
     * `id`: _String (base64)_ Base64 encoded contact node id.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
   * `sender`: _Object_ The sender of this request.
     * `id`: _String (base64)_ Base64 encoded sender id.
     * `data`: _Any_ Sender data.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
 
 Issues a PING request to the `contact`. The transport will emit `unreachable` event if the `contact` is unreachable, or `reached` event otherwise.
 
@@ -210,6 +219,7 @@ Issues a PING request to the `contact`. The transport will emit `unreachable` ev
   * `sender`: _Object_ The contact making the request.
     * `id`: _String (base64)_ Base64 encoded sender id.
     * `data`: _Any_ Sender data.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
   * `callback`: _Function_ The callback to call with the result of processing the FIND-NODE request.
     * `error`: _Error_ An error, if any.
     * `response`: _Object_ or _Array_ The response to FIND-NODE request.
@@ -264,6 +274,7 @@ If `error` occurs, the transport encountered an error when issuing the `findNode
   * `sender`: _Object_ The contact making the request.
     * `id`: _String (base64)_ Base64 encoded sender node id.
     * `data`: _Any_ Sender node data.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
   * `callback`: _Function_ The callback to call with the result of processing the PING request.
     * `error`: _Error_ An error, if any.
     * `response`: _Object_ or _Array_ The response to PING request, if any.
@@ -293,15 +304,17 @@ tcpTransport.on('ping', function (nodeId, sender, callback) {
 #### Event: `reached`
 
   * `contact`: _Object_ The contact that was reached when pinged.
-      * `id`: _String (base64)_ Base64 encoded contact node id.
-      * `data`: _Any_ Data included with the contact.
+    * `id`: _String (base64)_ Base64 encoded contact node id.
+    * `data`: _Any_ Data included with the contact.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
 
 Emitted when a previously pinged `contact` is deemed reachable by the transport.
 
 #### Event: `unreachable`
 
   * `contact`: _Object_ The contact that was unreachable when pinged.
-      * `id`: _String (base64)_ Base64 encoded contact node id.
+    * `id`: _String (base64)_ Base64 encoded contact node id.
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
 
 Emitted when a previously pinged `contact` is deemed unreachable by the transport.
 
