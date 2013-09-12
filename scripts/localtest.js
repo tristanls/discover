@@ -37,20 +37,26 @@ function startLocalTest() {
             {
                 id: id1,
                 data: 'discover1',
-                host: 'localhost',
-                port: 6741
+                transport: {
+                    host: 'localhost',
+                    port: 6741
+                }
             },
             {
                 id: id2,
                 data: 'discover2',
-                host: 'localhost',
-                port: 6742
+                transport: {
+                    host: 'localhost',
+                    port: 6742
+                }
             },
             {
                 id: id3,
                 data: 'discover3',
-                host: 'localhost',
-                port: 6743
+                transport: {
+                    host: 'localhost',
+                    port: 6743
+                }
             }
         ],
         transport: transport1});
@@ -60,20 +66,26 @@ function startLocalTest() {
             {
                 id: id1,
                 data: 'discover1',
-                host: 'localhost',
-                port: 6741
+                transport: {
+                    host: 'localhost',
+                    port: 6741
+                }
             },
             {
                 id: id2,
                 data: 'discover2',
-                host: 'localhost',
-                port: 6742
+                transport: {
+                    host: 'localhost',
+                    port: 6742
+                }
             },
             {
                 id: id3,
                 data: 'discover3',
-                host: 'localhost',
-                port: 6743
+                transport: {
+                    host: 'localhost',
+                    port: 6743
+                }
             }
         ],
         transport: transport2
@@ -84,20 +96,26 @@ function startLocalTest() {
             {
                 id: id1,
                 data: 'discover1',
-                host: 'localhost',
-                port: 6741
+                transport: {
+                    host: 'localhost',
+                    port: 6741
+                }
             },
             {
                 id: id2,
                 data: 'discover2',
-                host: 'localhost',
-                port: 6742
+                transport: {
+                    host: 'localhost',
+                    port: 6742
+                }
             },
             {
                 id: id3,
                 data: 'discover3',
-                host: 'localhost',
-                port: 6743
+                transport: {
+                    host: 'localhost',
+                    port: 6743
+                }
             }
         ],
         transport: transport3
@@ -108,20 +126,26 @@ function startLocalTest() {
             {
                 id: id1,
                 data: 'discover1',
-                host: 'localhost',
-                port: 6741
+                transport: {
+                    host: 'localhost',
+                    port: 6741
+                }
             },
             {
                 id: id2,
                 data: 'discover2',
-                host: 'localhost',
-                port: 6742
+                transport: {
+                    host: 'localhost',
+                    port: 6742
+                }
             },
             {
                 id: id3,
                 data: 'discover3',
-                host: 'localhost',
-                port: 6743
+                transport: {
+                    host: 'localhost',
+                    port: 6743
+                }
             }
         ],
         transport: transport4
@@ -132,20 +156,26 @@ function startLocalTest() {
             {
                 id: id1,
                 data: 'discover1',
-                host: 'localhost',
-                port: 6741
+                transport: {
+                    host: 'localhost',
+                    port: 6741
+                }
             },
             {
                 id: id2,
                 data: 'discover2',
-                host: 'localhost',
-                port: 6742
+                transport: {
+                    host: 'localhost',
+                    port: 6742
+                }
             },
             {
                 id: id3,
                 data: 'discover3',
-                host: 'localhost',
-                port: 6743
+                transport: {
+                    host: 'localhost',
+                    port: 6743
+                }
             }
         ],
         transport: transport5
@@ -154,11 +184,11 @@ function startLocalTest() {
     console.log('~script five discover instances running');
     console.log('~script starting self-registrations');
 
-    var node1 = {id: id1, data: 'discover1'};
-    var node2 = {id: id2, data: 'discover2'};
-    var node3 = {id: id3, data: 'discover3'};
-    var node4 = {id: id4, data: 'discover4'};
-    var node5 = {id: id5, data: 'discover5'};
+    var node1 = {id: id1, data: 'discover1', transport: {host: 'localhost', port: 6741}};
+    var node2 = {id: id2, data: 'discover2', transport: {host: 'localhost', port: 6742}};
+    var node3 = {id: id3, data: 'discover3', transport: {host: 'localhost', port: 6743}};
+    var node4 = {id: id4, data: 'discover4', transport: {host: 'localhost', port: 6744}};
+    var node5 = {id: id5, data: 'discover5', transport: {host: 'localhost', port: 6745}};
 
     discover1.register(node1);
     discover2.register(node2);
