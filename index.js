@@ -138,10 +138,10 @@ var Discover = module.exports = function Discover (options) {
         // return closest contacts
         var contacts = [];
         closestContacts.forEach(function (closeContact) {
-            var contact = {id: closeContact.id.toString("base64")};
-            if (closeContact.data) {
-                contact.data = closeContact.data;
-            }
+            var contact = clone(closeContact);
+            contact.id = contact.id.toString("base64");
+            // hide implementation details
+            delete contact.distance;
             contacts.push(contact);
         });
 
@@ -399,11 +399,11 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
     self.trace(traceHeader + 'have ' + closestContacts.length + ' closest contacts');
 
     // check if the closest contact is actually the node we are looking for
-    if (closestContacts[0].id.toString("base64") == nodeId) {        
-        var contact = {id: closestContacts[0].id.toString("base64")};
-        if (closestContacts[0].data) {
-            contact.data = closestContacts[0].data;
-        }
+    if (closestContacts[0].id.toString("base64") == nodeId) {     
+        var contact = clone(closestContacts[0]);
+        contact.id = contact.id.toString("base64");
+        // hide internal implementation details
+        delete contact.distance; 
         return callback(null, contact);
     }
 
@@ -586,6 +586,10 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
         query.index = 0;
         query.ongoingRequests = 0;
         query.nodes = newNodes; // these are sorted with distance (unlike query.newNodes)
+        query.nodesMap = {};
+        query.nodes.forEach(function (node) {
+            query.nodesMap[node.id] = node;
+        });
         query.closest = query.nodes[0];
         query.newNodes = [];
         
@@ -599,13 +603,14 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
 // contact: Object *required*
 //   id: String (base64) base64 encoded node id
 //   data: Any data to include with contact
+//   transport: Any data required for transport implementation
 //   vectorClock: Integer 
 Discover.prototype.register = function register (contact) {
     var self = this;
     contact = contact || {};
     contact = clone(contact); // separate references from outside
     
-    if (!contact.id) contact.id = crypto.createHash('sha1').digest('base64');
+    if (!contact.id) contact.id = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest('base64');
     if (!contact.vectorClock) contact.vectorClock = 0;
 
     var traceHeader = "register(" + contact.id + "): ";

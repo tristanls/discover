@@ -111,7 +111,7 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 #### discover.register(contact)
 
   * `contact`: _Object_ Contact object to register.
-    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ The contact id, base 64 encoded; will be created if not present.
+    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest('base64'`)_ The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
     * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
