@@ -48,7 +48,7 @@ Used internally by `discover.find()` to maintain query state when looking for a 
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
   * `announce`: _Object_ _(Default: undefined)_ _**CAUTION: reserved for internal use**_ Contact object, if specified, it indicates an announcement to the network so we ask the network instead of satisfying request locally and the sender is the `announce` contact object.
 
-The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
+The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id`, `contact.data`, `contact.transport` of the node. If an error occurs, only `error` will be provided.
 
 ```javascript
 discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) {
@@ -105,6 +105,7 @@ Checks if query completion criteria are met. If there are any new nodes to add t
   * `contact`: _Object_ Contact object to register.
     * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.     
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
   * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
 
@@ -114,6 +115,10 @@ Registers a new node on the network with `contact.id`. Returns a `contact`:
 discover.register({
     id: 'Zm9v', // base64 encoded String representing nodeId
     data: 'foo',
+    transport: {
+        host: "foo.bar.com", // or "localhost", "127.0.0.1", etc...
+        port: 6742
+    },
     vectorClock: 0  // vector clock paired with the nodeId
 });
 ```

@@ -59,7 +59,7 @@ An enhancement _(maybe)_ on top of the Kademlia protocol implementation is the i
 
 There are three reasons.
 
-Discover grew out of my experience with building messaging for a Node.js Platform as a Service based on an Actor Model of Computation. I did not like having a centralized messaging service that could bring down the entire platform. Messaging should be decentralized, which led to a Kademlia DHT-based implementation. _see: [Technical Origin Details](#technicalorigindetails)_
+Discover grew out of my experience with building messaging for a Node.js Platform as a Service based on an Actor Model of Computation. I did not like having a centralized messaging service that could bring down the entire platform. Messaging should be decentralized, which led to a Kademlia DHT-based implementation. _see: [Technical Origin Details](#technical-origin-details)_
 
 Every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation. 
 
@@ -99,7 +99,7 @@ The `seeds` are necessary if joining an existing Discover cluster. Discover will
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
   * `announce`: _Object_ _(Default: undefined)_ _**CAUTION: reserved for internal use**_ Contact object, if specified, it indicates an announcement to the network so we ask the network instead of satisfying request locally and the sender is the `announce` contact object.
 
-The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id` and `contact.data` of the node. If an error occurs, only `error` will be provided.
+The `callback` is called with the result of searching for `nodeId`. The result will be a `contact` containing `contact.id`, `contact.data`, and `contact.transport` of the node. If an error occurs, only `error` will be provided.
 
 ```javascript
 discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) {
