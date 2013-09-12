@@ -30,7 +30,7 @@ Each Discover instance stores information on numerous nodes. Each instance also 
 
 Discover manages information about _nodes_ via maintaining node information in a structure called a _contact_. A contact stores the details of a particular node on the network.
 
-A contact is a JavaScript object that consists of `contact.id`, `contact.data`, and `contact.transport`. These are the only properties that are guaranteed not to be changed by Discover.
+A contact is a JavaScript object that consists of `contact.id`, `contact.data`, and `contact.transport`. The `id` and `data` are the only properties that are guaranteed not to be changed by Discover.
 
   * `id`: _String (base64)_ A globally unique Base64 encoded node id.
   * `data`: _Any_ Any data that should be included with this contact when it is retrieved by others on the network. This should be a "serializable" structure (no circular references) so that it can be `JSON.stringify()`ed.
@@ -162,7 +162,9 @@ Unregisters previously registered `contact` (identified by `contact.id` and `con
 
 Modules implementing the transport mechanism for Discover shall conform to the following interface. A `transport` is a JavaScript object.
 
-Transport implementations shall ensure that `contact.id` and `contact.data` will be immutable and will pass through the transportation system without modification (`contact` objects are passed through the transportation system when responding to FIND-NODE requests).
+Transport implementations shall ensure that `contact.id` and `contact.data` will be immutable and will pass through the transportation system without modification (`contact` objects are passed through the transportation system during FIND-NODE and PING requests).
+
+Transport has full dominion over `contact.transport` property.
 
 Transport implementations shall allow registering and interacting with event listeners as provided by `events.EventEmitter` interface.
 
