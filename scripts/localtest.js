@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // run 5 nodes in the local environment and display trace info
 
-var crypto = require('crypto'),
+var assert = require('assert'),
+    crypto = require('crypto'),
     Discover = require('../index.js'),
     TcpTransport = require('discover-tcp-transport'),
     util = require('util');
@@ -199,7 +200,7 @@ function startLocalTest() {
     console.log('~script self-registrations complete');
     console.log('~script allowing nodes to communicate and settle');
 
-    setTimeout(continueLocalTest, 2000);
+    setTimeout(continueLocalTest, 1000);
 };
 
 function continueLocalTest() {
@@ -230,6 +231,37 @@ function continueLocalTest() {
 
         console.log('~script listing of node contents complete');
 
-        setTimeout(function () { process.exit(); }, 2000);
+        setTimeout(continueLocalTest2, 1000);
     });
+};
+
+var id6;
+
+function continueLocalTest2() {
+    id6 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
+    var node6 = {id: id6, data: 'discover6', transport: {host: 'localhost', port: 6741}};
+
+    console.log('~script multiple nodes per discover instance');
+
+    discover1.register(node6);
+
+    console.log('~script allowing nodes to communicate and settle');
+
+    setTimeout(continueLocalTest3, 1000);
+};
+
+function continueLocalTest3() {
+    console.log('~script retrieving node6 from discover5');
+    discover5.find(id6, function (error, contact) {
+        assert.ok(!error);
+
+        console.log('~script recevied contact: ' + util.inspect(contact, false, null));
+
+        setTimeout(complete, 1000);
+    });
+};
+
+function complete() {
+    console.log('~script complete');
+    setTimeout(function () { process.exit(); }, 1000);
 };
