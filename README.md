@@ -345,47 +345,6 @@ Currently, `discover.unregister(contact)` deletes all "closest" contact informat
 
 An elaboration would be to distribute known contacts to other k-buckets when a `contact` is unregistered.
 
-#### Multiple Transports
-
-There is really nothing that I immediately see that would be preventing use of multiple transports. It may be useful to implement a `contact.transport` field to specify which transport to use/prefer. For example:
-
-```javascript
-{
-    id: 'Zm9v', // base64 encoded String representing nodeId
-    data: 'foo',
-    ip: '127.0.0.1',
-    port: 8080,
-    transport: 'tcp'
-}
-// or
-{
-    id: 'Zm9v', // base64 encoded String representing nodeId
-    data: 'foo'
-    hostname: 'localhost',
-    port: 80,
-    transport: 'http'    
-}
-// or maybe something like...
-{
-    id: 'Zm9v', // base64 encoded String representing nodeId
-    data: 'foo',
-    transport: {
-        dtls: {
-            ip: '127.0.0.1',
-            port: '4321'
-        },
-        tls: {
-            ip: '127.0.0.1',
-            port: '1234'
-        },
-        tcp: {
-            ip: '127.0.0.1',
-            port: '5555'
-        }
-    }
-}
-```
-
 ## Sources
 
 The implementation has been sourced from:
