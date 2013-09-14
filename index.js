@@ -621,6 +621,7 @@ Discover.prototype.register = function register (contact) {
         kBucket.on('ping', function (oldContacts, newContact) {
             // ping all the old contacts and if one does not respond, remove it
             var oldContactIdsBase64 = [];
+            var reachedContactIdsBase64 = [];
             var unreachableListener = function (contact) {
                 if (oldContactIdsBase64.indexOf(contact.id) > -1) {
                     self.transport.removeListener('unreachable', unreachableListener);
@@ -629,11 +630,11 @@ Discover.prototype.register = function register (contact) {
                     kBucket.add(newContact);
                 }
             };
-            var reachedCount = 0;
             var reachedListener = function (contact) {
-                if (oldContactIdsBase64.indexOf(contact.id) > -1) {
-                    reachedCount++;
-                    if (reachedCount == oldContactIdsBase64.length) {
+                var index = reachedContactIdsBase64.indexOf(contact.id);
+                if (index > -1) {
+                    reachedContactIdsBase64.splice(index, 1);
+                    if (reachedContactIdsBase64.length == 0) {
                         // all contacts were reached, won't be adding new one
                         self.transport.removeListener(
                             'unreachable', unreachableListener);
@@ -649,6 +650,7 @@ Discover.prototype.register = function register (contact) {
                 var contact = clone(oldContact);
                 contact.id = oldContact.id.toString("base64");
                 oldContactIdsBase64.push(contact.id);
+                reachedContactIdsBase64.push(contact.id);
                 self.transport.ping(contact, sender);
             });
         });

@@ -257,7 +257,13 @@ function continueLocalTest3() {
 
         console.log('~script recevied contact: ' + util.inspect(contact, false, null));
 
-        setTimeout(complete, 1000);
+        console.log('~script second attempt should always be local (using cached value)');
+        discover5.find(id6, function (error, contact) {
+            assert.ok(!error);
+            console.log('~script received contact: ' + util.inspect(contact, false, null));
+
+            setTimeout(complete, 1000);
+        });
     });
 };
 
