@@ -323,13 +323,14 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 This is roughly in order of current priority:
 
   * **Interface Specification**: The interface points between `discover`, `transport`, and `k-bucket` are still experimental but are quickly converging on what they need to be in order to support the functionality
-    * **storage refactoring**: There emerged (obvious in retrospect) a "storage" abstraction during the implementation of `discover` that is higher level than a `k-bucket` but that still seems to be worth extracting. 
   * **Implementation Correctness**: Gain confidence that the protocol functions as expected. This should involve running a lot of nodes and measuring information distribution latency and accuracy.
   * **TLS Transport** _(separate module)_ or it might make sense to change the TCP Transport into Net Transport and include within both TCP and TLS.
   * **UDP Transport** _(separate module)_
   * **DTLS Transport** _(separate module)_
   * **Performance**: Make it fast and small.
     * **discover.kBuckets**: It should be a datastructure with _O(log n)_ operations.
+  * **Storage Refactoring**: There emerged (obvious in retrospect) a "storage" abstraction during the implementation of `discover` that is higher level than a `k-bucket` but that still seems to be worth extracting. 
+      * _24 Sep 2013:_ Despite a storage abstraction, it is not straightforward to separate out due to the 'ping' interaction between `k-bucket` and transport. KBucket storage implementation would have to pass some sort of token to Discover in order to remove an old contact form the correct KBucket (a closer KBucket could be registered while pinging is happening), but this exposes internal implementation, the hiding of which, was the point of abstracting a storage mechanism. It is also a very KBucket specific mechanism that I have difficulty generalizing to a common "storage" interface. Additionally, I am hard pressed to see Discover working well with non-k-bucket storage. Thusly, storage refactoring is no longer a priority.
 
 ### Other considerations
 
