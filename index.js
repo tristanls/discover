@@ -224,14 +224,17 @@ var Discover = module.exports = function Discover (options) {
 
 util.inherits(Discover, events.EventEmitter);
 
-// query: Object *required* object containing query state for this request
-//   nodeId: String (base64) *required* Base64 encoded node id to find
-//   nodes: Array *required* nodes to query for nodeId arranged from closest to
-//          furthest
-//     node: 
-//       id: String (base64) *required* Base64 encoded contact id
-//   nodesMap: Object *required* Map to nodes present in `nodes`
-// callback: Function *required* callback to call with result
+/*
+  * `query`: _Object_ Object containing query state for this request.
+    * `nodeId`: _String (base64)_ Base64 encoded node id to find.
+    * `nodes`: _Array_ `contact`s to query for `nodeId` arranged from closest to
+               farthest.
+      * `node`:
+        * `id`: _String (base64)_ Base64 encoded contact id.
+    * `nodesMap`: _Object_ A map to the same `contact`s already present in
+                  `nodes` for O(1) access.
+  * `callback`: _Function_ The callback to call with result.
+*/
 Discover.prototype.executeQuery = function executeQuery (query, callback) {
     var self = this;
 
@@ -360,11 +363,16 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
     self.queryCompletionCheck(query, callback);
 };
 
-// nodeId: String (base64) *required* Base64 encoded node id to find
-// callback: Function *required* callback to call with result
-// announce: Object Contact, if given, can't answer with local result, the
-//           purpose of this flag-like param is for announcing contact's existence
-//           to the network 
+/*
+  * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
+  * `callback`: _Function_ The callback to call with the result of searching for 
+                `nodeId`.
+  * `announce`: _Object_ _(Default: undefined)_ _**CAUTION: reserved for 
+                internal use**_ Contact object, if specified, it indicates an 
+                announcement to the network so we ask the network instead of 
+                satisfying request locally and the sender is the `announce` 
+                contact object.  
+*/
 Discover.prototype.find = function find (nodeId, callback, announce) {
     var self = this;
     var traceHeader = "find(" + nodeId + "): ";
@@ -427,11 +435,14 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
     self.executeQuery(query, callback);
 };
 
-// nodeId: String (base64) *required* Base64 encoded node id to find
-// callback: Function *required* callback to call with result
-// announce: Object Contact, if given, can't answer with local result, the
-//           purpose of this flag-like param is for announcing contact's existence
-//           to the network 
+/*
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find.
+  * `callback`: _Function_ The callback to call with the result of searching for 
+                `nodeId`.
+  * `announce`: _Object_ _(Default: undefined)_ Contact object, if specified, it 
+                indicates an announcement and the sender is the `announce` 
+                contact object.
+*/
 Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback, announce) {
     var self = this;
     var traceHeader = "findViaSeeds(" + nodeId + "): ";
@@ -468,9 +479,13 @@ Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback, annou
     self.executeQuery(query, callback);
 };
 
-// nodeId: String (base64) *required* Base64 encoded node id to find
-// closestKBuckets: Array KBuckets sorted from closest to furthest
-// Return: the list of closest contacts
+/*
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts 
+              to.
+  * `closestKBuckets`: _Array_ Sorted array of `KBucket`s from closest to 
+                       furthest from `nodeId`.
+  * Return: _Array_ List of closest contacts.
+*/
 Discover.prototype.getClosestContacts = function getClosestContacts (nodeId, closestKBuckets) {
     var self = this;
 
@@ -493,8 +508,11 @@ Discover.prototype.getClosestContacts = function getClosestContacts (nodeId, clo
     return closestContacts;
 };
 
-// nodeId: String (base64) *required* Base64 encoded node id to find
-// Return: the list of closest kBuckets
+/*
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts 
+              to.
+  * Return: _Array_ List of closest `KBucket`s.
+*/
 Discover.prototype.getClosestKBuckets = function getClosestKBuckets (nodeId) {
     var self = this;
 
@@ -518,14 +536,17 @@ Discover.prototype.getClosestKBuckets = function getClosestKBuckets (nodeId) {
     return closestKBuckets;
 };
 
-// query: Object *required* object containing query state for this request
-//   nodeId: String (base64) *required* Base64 encoded node id to find
-//   nodes: Array *required* nodes to query for nodeId arranged from closest to
-//          furthest
-//     node: 
-//       id: String (base64) *required* Base64 encoded contact id
-//   nodesMap: Object *required* Map to nodes present in `nodes`
-// callback: Function *required* callback to call with result
+/*
+  * `query`: _Object_ Object containing query state for this request.
+    * `nodeId`: _String (base64)_ Base64 encoded node id to find.
+    * `nodes`: _Array_ `contact`s to query for `nodeId` arranged from closest to
+               furthest.
+      * `node`:
+        * `id`: _String (base64)_ Base64 encoded contact id.
+    * `nodesMap`: _Object_ A map to the same `contact`s already present in 
+                  `nodes` for O(1) access.
+  * `callback`: _Function_ The callback to call with result.
+*/
 Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, callback) {
     var self = this;
     // console.log("QUERY COMPLETION CHECK");
@@ -599,11 +620,18 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
     // console.log("FAILED QUERY COMPLETION CHECK >>> KEEP GOING");
 };
 
-// contact: Object *required*
-//   id: String (base64) base64 encoded node id
-//   data: Any data to include with contact
-//   transport: Any data required for transport implementation
-//   vectorClock: Integer 
+/*
+  * `contact`: _Object_ Contact object to register.
+    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ 
+            The contact id, base 64 encoded; will be created if not present.
+    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be 
+              returned for anyone querying for this `contact` by `id`
+    * `transport`: _Any_ Any data that the transport mechanism requires for 
+                   operation.     
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
+  * Return: _Object_ Contact that was registered with `id` and `vectorClock` 
+            generated if necessary.
+*/
 Discover.prototype.register = function register (contact) {
     var self = this;
     contact = contact || {};
@@ -670,6 +698,13 @@ Discover.prototype.register = function register (contact) {
     return clone(contact); // don't leak internal implementation
 };
 
+/*
+  * `contact`: _Object_ Contact object to report unreachable
+    * `id`: _String (base64)_ The previously registered contact id, base64 
+            encoded.
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to report 
+                     unreachable.
+*/
 Discover.prototype.unreachable = function unreachable (contact) {
     var self = this;
     self.trace('unreachable(' + util.inspect(contact) + ')');
@@ -691,6 +726,13 @@ Discover.prototype.unreachable = function unreachable (contact) {
     closestKBucket.remove(clonedContact);
 };
 
+/*
+  * `contact`: _Object_ Contact object to register
+    * `id`: _String (base64)_ The previously registered contact id, base 64 
+            encoded.
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to 
+                     unregister.
+*/
 Discover.prototype.unregister = function unregister (contact) {
     var self = this;
     var kBucket = self.kBuckets[contact.id];
