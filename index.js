@@ -34,7 +34,6 @@ var clone = require('clone'),
     crypto = require('crypto'),
     events = require('events'),
     KBucket = require('k-bucket'),
-    TcpTransport = require('discover-tcp-transport'),
     util = require('util');
 
 var Discover = module.exports = function Discover (options) {
