@@ -2,6 +2,8 @@
 
 _Stability: 1 - [Experimental](https://github.com/tristanls/stability-index#stability-1---experimental)_
 
+![latest published module version](https://badge.fury.io/js/discover.png)
+
 Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. It enables point-to-point communications without pre-defined architecture.
 
 ## Installation
