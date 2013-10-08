@@ -10,7 +10,7 @@
   "dependencies": {
     "clone": "0.1.9",
     "discover-tcp-transport": "3.0.0",
-    "k-bucket": "0.2.1"
+    "k-bucket": "0.2.2"
   },
   "devDependencies": {
     "nodeunit": "0.8.1"
