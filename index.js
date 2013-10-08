@@ -56,6 +56,7 @@ var clone = require('clone'),
 var Discover = module.exports = function Discover (options) {
     var self = this;
     options = options || {};
+    events.EventEmitter.call(self);
 
     self.CONCURRENCY_CONSTANT = options.CONCURRENCY_CONSTANT || 3;
     self.seeds = options.seeds || [];
