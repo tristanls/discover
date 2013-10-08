@@ -67,6 +67,10 @@ Every Kademlia DHT implementation I came across in Node.js community tightly cou
 
 Lastly, I wanted to learn and commit to intuition the implementation of Kademlia DHT so that I can apply that knowledge in other projects.
 
+## Contributors
+
+[@tristanls](https://github.com/tristanls), [@mikedeboer](https://github.com/mikedeboer)
+
 ## Documentation
 
 ### Discover
