@@ -6,6 +6,10 @@ _Stability: 1 - [Experimental](https://github.com/tristanls/stability-index#stab
 
 Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. It enables point-to-point communications without pre-defined architecture.
 
+## Contributors
+
+[@tristanls](https://github.com/tristanls), [@mikedeboer](https://github.com/mikedeboer)
+
 ## Installation
 
     npm install discover
@@ -66,10 +70,6 @@ Discover grew out of my experience with building messaging for a Node.js Platfor
 Every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation. 
 
 Lastly, I wanted to learn and commit to intuition the implementation of Kademlia DHT so that I can apply that knowledge in other projects.
-
-## Contributors
-
-[@tristanls](https://github.com/tristanls), [@mikedeboer](https://github.com/mikedeboer)
 
 ## Documentation
 
