@@ -55,8 +55,9 @@ var clone = require('clone'),
 */
 var Discover = module.exports = function Discover (options) {
     var self = this;
-    options = options || {};
     events.EventEmitter.call(self);
+
+    options = options || {};
 
     self.CONCURRENCY_CONSTANT = options.CONCURRENCY_CONSTANT || 3;
     self.seeds = options.seeds || [];
@@ -166,17 +167,12 @@ var Discover = module.exports = function Discover (options) {
     self.transport.on('ping', function (nodeId, sender, callback) {
         if (self.tracing)
             self.trace("on 'ping' - nodeId: " + nodeId + ", sender: " + util.inspect(sender));
-        // check if nodeId is one of the locally registered nodes
-        // XXXmikedeboer: smelly code; callback called before buckets update
-        var localContactKBucket = self.kBuckets[nodeId];
-        if (localContactKBucket) {
-            callback(null, localContactKBucket.contact);
-        } else {
-            // the nodeId is not one of the locally registered nodes, ping fail 
-            callback(true);
-        }
 
         // add the sender
+        // in contrast to self.transport.on('findNode', ...) we can add the
+        // sender prior to responding because it is verifying a ping for a
+        // specific node and not searching for one, the 'findNode' consideration
+        // to update K-Buckets only after responding does not apply in this case
         var senderClosestKBuckets = self.getClosestKBuckets(sender.id);
         if (senderClosestKBuckets.length == 0) {
             if (self.tracing)
@@ -194,6 +190,15 @@ var Discover = module.exports = function Discover (options) {
                 clonedSender.id = new Buffer(clonedSender.id, "base64");
                 senderClosestKBucket.add(clonedSender);
             }
+        }
+
+        // check if nodeId is one of the locally registered nodes
+        var localContactKBucket = self.kBuckets[nodeId];
+        if (localContactKBucket) {
+            callback(null, localContactKBucket.contact);
+        } else {
+            // the nodeId is not one of the locally registered nodes, ping fail 
+            callback(true);
         }
     });
 
@@ -251,16 +256,6 @@ var Discover = module.exports = function Discover (options) {
 };
 
 util.inherits(Discover, events.EventEmitter);
-
-Discover.prototype.trace = function(message) {
-    var self = this,
-        options = this.options;
-
-    if (options.inlineTrace)
-        console.log('~trace', message);
-    if (options.eventTrace)
-        self.emit('~trace', message);
-};
 
 /*
   * `query`: _Object_ Object containing query state for this request.
@@ -343,7 +338,6 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                 
                 contactRecord.contacted = true;
 
-                // console.log("NODE EVENT HANDLER");
                 // console.dir(query);
 
                 // initiate next request if there are still queries to be made
@@ -451,7 +445,7 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
 
     var closestContacts = self.getClosestContacts(nodeId, closestKBuckets);
 
-    // if none of our local kBuckets have any contacts (should only happend
+    // if none of our local kBuckets have any contacts (should only happen
     // when bootstrapping), talk to the seeds
     if (closestContacts.length == 0) {
         if (self.tracing)
@@ -553,6 +547,10 @@ Discover.prototype.getClosestContacts = function getClosestContacts (nodeId, clo
     // or reach the end
     var closestContacts = [];
     var closestKBucketsIndex = 0;
+    // TODO: it is possible for closestKBucket.closest({...}, 3) to return
+    //       less than 3 contacts, in that case a list of less than 3 will
+    //       be returned, changing while condition to use
+    //       `closestContacts.length < 3` may be a bette heuristic choice
     while (closestContacts.length == 0
             && closestKBucketsIndex < closestKBuckets.length) {
         var closestKBucketId = closestKBuckets[closestKBucketsIndex].id;
@@ -575,7 +573,11 @@ Discover.prototype.getClosestKBuckets = function getClosestKBuckets (nodeId) {
     var self = this;
 
     // TODO: change self.kBuckets data structure so that this operation is
-    //       O(log n) instead of O(n)
+    //       O(log n) instead of O(n), although, in proritizing this task
+    //       remember the use-case of having more than one kBucket in self.kBuckets
+    //       means that we are doing discover.register(contact) quite many times.
+    //       It seems that for *most* use-cases, only one contact will ever be
+    //       `discover.register`'ed (this registers identity of the local node)
     var closestKBuckets = [];
     var nodeIdBuffer = new Buffer(nodeId, "base64");
     Object.keys(self.kBuckets).forEach(function (kBucketKey) {
@@ -663,7 +665,7 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
         // update query state and go another round
         query.index = 0;
         query.ongoingRequests = 0;
-        query.nodes = newNodes; // these are sorted with distance (unlike query.newNodes)
+        query.nodes = newNodes; // these are sorted by distance (unlike query.newNodes)
         query.nodesMap = {};
         query.nodes.forEach(function (node) {
             query.nodesMap[node.id] = node;
@@ -758,6 +760,19 @@ Discover.prototype.register = function register (contact) {
     self.find(contact.id, function () {}, contact /*announce*/);
 
     return clone(contact); // don't leak internal implementation
+};
+
+/*
+  * `message`: _String_ Message to trace.
+*/
+Discover.prototype.trace = function(message) {
+    var self = this;
+    var options = self.options;
+
+    if (options.inlineTrace)
+        console.log('~trace', message);
+    if (options.eventTrace)
+        self.emit('~trace', message);
 };
 
 /*
