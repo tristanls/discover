@@ -187,6 +187,7 @@ _NOTE: Unreachability of nodes depends on the transport. For example, transports
 _**WARNING**: Using TCP transport is meant primarily for development in a development environment. TCP transport exists because it is a low hanging fruit. It is most likely that it should be replaced with DTLS transport in production (maybe TLS if DTLS is not viable). There may also be a use-case for using UDP transport if communicating nodes are on a VPN/VPC. Only if UDP on a VPN/VPC seems not viable, should TCP transport be considered._
 
 **Transport Interface Specification**
+
   * [transport.findNode(contact, nodeId, sender)](#transportfindnodecontact-nodeid-sender)
   * [transport.ping(contact, sender)](#transportpingcontact-sender)
   * [Event 'findNode'](#event-findnode)
