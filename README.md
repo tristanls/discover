@@ -80,13 +80,14 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
 _For more detailed documentation including private methods see [Discover doc](docs/Discover.md)_
 
 **Public API**
+
   * [new Discover(options)](#new-discoveroptions)
   * [discover.find(nodeId, callback, \[announce\])](#discoverfindnodeid-callback-announce)
   * [discover.register(contact)](#discoverregistercontact)
   * [discover.unreachable(contact)](#discoverunreachablecontact)
   * [discover.unregister(contact)](#discoverunregistercontact)
 
-#### new Discover(options)
+### new Discover(options)
 
   * `options`:
     * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent FIND-NODE requests to the network per `find` request.
@@ -99,7 +100,7 @@ Creates a new Discover instance.
 
 The `seeds` are necessary if joining an existing Discover cluster. Discover will use these `seeds` to announce itself to other nodes in the cluster. If `seeds` are not provided, then it is assumed that this is a seed node, and other nodes will include this node's address in their `seeds` option. It all has to start somewhere.
 
-#### discover.find(nodeId, callback, [announce])
+### discover.find(nodeId, callback, [announce])
 
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
   * `callback`: _Function_ The callback to call with the result of searching for `nodeId`.
@@ -114,7 +115,7 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 });
 ```
 
-#### discover.register(contact)
+### discover.register(contact)
 
   * `contact`: _Object_ Contact object to register.
     * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest('base64')`)_ The contact id, base 64 encoded; will be created if not present.
@@ -139,7 +140,7 @@ discover.register({
 
 _NOTE: Current implementation creates a new k-bucket for every registered node id. It is important to remember that a k-bucket could store up to k*lg(n) contacts, where lg is log base 2, n is the number of registered node ids on the network, and k is the size of each k-bucket (by default 20). For 1 billion registered nodes on the network, each k-bucket could store around 20 * lg (1,000,000,000) = ~ 598 contacts. This isn't bad, until you have 1 million local entities for a total of 598,000,000 contacts plus k-bucket overhead, which starts to put real pressure on Node.js/V8 memory limit._
 
-#### discover.unreachable(contact)
+### discover.unreachable(contact)
 
   * `contact`: _Object_ Contact object to report unreachable
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
@@ -161,7 +162,7 @@ discover.find("Zm9v", function (error, contact) {
 });
 ```
 
-#### discover.unregister(contact)
+### discover.unregister(contact)
 
   * `contact`: _Object_ Contact object to register
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
@@ -194,7 +195,7 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
   * [Event 'reached'](#event-reached)
   * [Event 'unreachable'](#event-unreachable)
 
-#### transport.findNode(contact, nodeId, sender)
+### transport.findNode(contact, nodeId, sender)
 
   * `contact`: _Object_ The node to contact with request to find `nodeId`.
     * `id`: _String (base64)_ Base64 encoded contact node id.
@@ -207,7 +208,7 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
 
 Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or otherwise shall be communicated by emitting a `node` event.
 
-#### transport.ping(contact, sender)
+### transport.ping(contact, sender)
 
   * `contact`: _Object_ Contact to ping.
     * `id`: _String (base64)_ Base64 encoded contact node id.
@@ -261,7 +262,7 @@ transport.on('findNode', function (nodeId, sender, callback) {
 });
 ```
 
-#### Event: `node`
+### Event: `node`
 
   * `error`: _Error_ An error, if one occurred.
   * `contact`: _Object_ The node that FIND-NODE request was sent to.
@@ -274,7 +275,7 @@ If `error` occurs, the transport encountered an error when issuing the `findNode
 
 `response` will be an Object if the `contact` knows of the `nodeId`. In other words, the node has been found, and `response` is a `contact` object.
 
-#### Event: `ping`
+### Event: `ping`
 
   * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id being pinged.
   * `sender`: _Object_ The contact making the request.
@@ -305,7 +306,7 @@ transport.on('ping', function (nodeId, sender, callback) {
 });
 ```
 
-#### Event: `reached`
+### Event: `reached`
 
   * `contact`: _Object_ The contact that was reached when pinged.
     * `id`: _String (base64)_ Base64 encoded contact node id.
@@ -314,7 +315,7 @@ transport.on('ping', function (nodeId, sender, callback) {
 
 Emitted when a previously pinged `contact` is deemed reachable by the transport.
 
-#### Event: `unreachable`
+### Event: `unreachable`
 
   * `contact`: _Object_ The contact that was unreachable when pinged.
     * `id`: _String (base64)_ Base64 encoded contact node id.
