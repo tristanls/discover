@@ -55,6 +55,50 @@ var contact = {
 };
 ```
 
+### Use of `contact.data`
+
+As explained below in [Technical Origin Details](#technical-origin-details), Discover is intended to implement only PING and FIND-NODE RPCs. This reflects the intent of Discover to be a discovery mechanism and not a data storage/distribution mechanism. It is important to keep that in mind when using `contact.data`. 
+
+The existence of `contact.data` is to support the discovery mechanism. Given that `contact.transport` contains information for how a Discover transport can connect to another Discover transport, this is not very useful if one is trying to figure out the endpoint address of another node for application level purposes. It may not correspond at all to what's in `contact.transport`. The intended use of `contact.data` is to store a **minimal** amount of information required for connecting to the node endpoint for the application's purpose.
+
+For example, if we want a DNS-like functionality, we could look for a contact with id of `my.secret.dns.com`. This could correspond to the following contact:
+
+```javascript
+var contact = {
+    id: "bXkuc2VjcmV0LmRucy5jb20=", // Base64 encoding of "my.secret.dns.com"
+    data: {
+        port: 8080
+    },
+    transport: {
+        host: "10.22.1.37",
+        port: 6742
+    }
+};
+```
+
+This would tell us that we can connect to `my.secret.dns.com` at IP address `10.22.1.37` and port `8080`.
+
+As another example and to illustrate perhaps less familiar intents, if we want to find an actor "receptionist" in the global actor system, we could look for a contact that looks like this:
+
+```javascript
+var contact = {
+    id: "tmqjRAfBILbEC6aaHoz3AurtluM=", // Base64 encoded receptionist address
+    data: {
+        webkey: "c9bf857b35ed4750ca35c0a4f41e56644df59547",
+        port: 9999,
+        publicKey: "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"
+    },
+    transport: {
+        host: "10.13.211.201",
+        port: 6742
+    }
+};
+```
+
+This would tell us that we can access the actor using the published webkey at IP address `10.13.211.201` and port `9999` and to encrypt our communication using provided public key.
+
+Uses of `contact.data` that are not "minimal" in this way can result in poor system behavior.
+
 ### Technical Origin Details
 
 Discover is implemented using a stripped down version of the Kademlia Distributed Hash Table (DHT). It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
