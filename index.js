@@ -330,7 +330,17 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                 if (contactRecord.kBucket) {
                     // we have a kBucket to report unreachability to
                     // remove from kBucket
-                    contactRecord.kBucket.remove({
+                    var kBucketInfo = self.kBuckets[contactRecord.kBucket.id];
+                    if (!kBucketInfo) {
+                        return;
+                    }
+
+                    var kBucket = kBucketInfo.kBucket;
+                    if (!kBucket) {
+                        return;
+                    }
+
+                    kBucket.remove({
                         id: new Buffer(contactRecord.id, 'base64'),
                         vectorClock: contactRecord.vectorClock
                     });
