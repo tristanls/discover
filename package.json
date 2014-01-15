@@ -1,6 +1,6 @@
 {
   "name": "discover",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Node discovery based on Kademlia DHT protocol",
   "scripts": {
     "localtest": "node scripts/localtest.js",
