@@ -235,7 +235,7 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
 
   * [transport.findNode(contact, nodeId, sender)](#transportfindnodecontact-nodeid-sender)
   * [transport.ping(contact, sender)](#transportpingcontact-sender)
-  * [tcpTransport.setTransportInfo(contact)](#tcptransportsettransportinfocontact)
+  * [transport.setTransportInfo(contact)](#transportsettransportinfocontact)
   * [Event 'findNode'](#event-findnode)
   * [Event 'node'](#event-node)
   * [Event 'ping'](#event-ping)
@@ -267,20 +267,12 @@ Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or other
 
 Issues a PING request to the `contact`. The transport will emit `unreachable` event if the `contact` is unreachable, or `reached` event otherwise.
 
-#### tcpTransport.setTransportInfo(contact)
+#### transport.setTransportInfo(contact)
 
   * `contact`: _Object_ A contact.
   * Return: _Object_ `contact` with `contact.transport` populated.
 
-Sets `contact.transport` to TCP transport configured values. For example:
-
-```javascript
-var contact = {id: 'id', data: 'data'};
-var tcpTransport = new TcpTransport({host: 'foo.com', port: 8888});
-contact = tcpTransport.setTransportInfo(contact);
-assert.ok(contact.transport.host === 'foo.com'); // true
-assert.ok(contact.transport.port === 8888); // true
-```
+Sets `contact.transport` to transport configured values.
 
 #### Event: `findNode`
 
