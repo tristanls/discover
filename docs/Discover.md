@@ -106,7 +106,7 @@ Checks if query completion criteria are met. If there are any new nodes to add t
   * `contact`: _Object_ Contact object to register.
     * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation.     
+    * `transport`: _Any_ _(Required for seeds only)_ Any data that the transport mechanism requires for operation.     
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
   * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
 

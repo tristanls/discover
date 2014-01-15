@@ -4,7 +4,7 @@ index.js - "discover": Node discovery based on Kademlia DHT protocol
 
 The MIT License (MIT)
 
-Copyright (c) 2013 Tristan Slominski
+Copyright (c) 2013-2014 Tristan Slominski
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -695,9 +695,7 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
     * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ 
             The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be 
-            returned for anyone querying for this `contact` by `id`
-    * `transport`: _Any_ Any data that the transport mechanism requires for 
-            operation.     
+            returned for anyone querying for this `contact` by `id`  
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
   * Return: _Object_ Contact that was registered with `id` and `vectorClock` 
           generated if necessary.
@@ -710,6 +708,9 @@ Discover.prototype.register = function register (contact) {
     if (!contact.id) {
         contact.id = crypto.randomBytes(20).toString('base64');
     }
+
+    // add transport information to the stored contact
+    contact = self.transport.setTransportInfo(contact);
 
     if (!contact.vectorClock)
         contact.vectorClock = 0;

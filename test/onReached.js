@@ -41,6 +41,9 @@ test["on 'reached' adds the reached contact to the closest KBucket"] = function 
     var fooBase64 = new Buffer("foo").toString("base64");
     var barBase64 = new Buffer("bar").toString("base64");
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     var discover = new Discover({
         transport: transport
     });

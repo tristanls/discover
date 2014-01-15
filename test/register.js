@@ -39,6 +39,9 @@ var test = module.exports = {};
 test['register() creates a new kBucket from randomly generated contact.id'] = function (test) {
     test.expect(3);
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
     var contact = discover.register({data: 'foo'});
@@ -52,6 +55,9 @@ test['register() creates a new kBucket from randomly generated contact.id'] = fu
 test["register() registers 'ping' listener on newly created kBucket"] = function (test) {
     test.expect(3);
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
     var contact = discover.register({data: 'foo'});
@@ -62,9 +68,14 @@ test["register() registers 'ping' listener on newly created kBucket"] = function
     test.done();
 };
 
-test['register() stores registered contact info with newly created kBucket'] = function (test) {
-    test.expect(1);
+test['register() stores registered contact info (enriched with transport info) with newly created kBucket'] = function (test) {
+    test.expect(2);
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        test.ok(true);
+        contact.transport = {host: 'foo.com', port: 8888};
+        return contact;
+    };    
     transport.findNode = function () {};
     var discover = new Discover({transport: transport});
     var contact = discover.register({data: {foo: 'bar'}});
@@ -75,6 +86,9 @@ test['register() stores registered contact info with newly created kBucket'] = f
 test['register() does not re-create an existing kBucket'] = function (test) {
     test.expect(1);
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
     var contact = discover.register({data: 'foo'});
@@ -88,6 +102,9 @@ test['register() does not re-create an existing kBucket'] = function (test) {
 test['register() updates previous contact info when re-registering'] = function (test) {
     test.expect(1);
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function () {};
     var discover = new Discover({transport: transport});
     var contact = discover.register({data: {foo: 'bar'}});
@@ -109,6 +126,9 @@ test['register() calls transport.findNode() on the seeds if there are no ' +
     ];
     var transport = new events.EventEmitter();
     var first = true;
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {
         if (first) {
             first = false;
@@ -138,6 +158,9 @@ test['register() queries closest nodes if not found on first round by querying' 
         {id: barBase64, ip: '127.0.0.1', port: 6743}
     ];
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {
         if (contact.id == seeds[1].id) {
             process.nextTick(function () {

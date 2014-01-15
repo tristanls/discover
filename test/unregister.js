@@ -47,6 +47,9 @@ test['unregister() succeeds if kBucket does not exist'] = function (test) {
 test['unregister() removes existing kBucket'] = function (test) {
     test.expect(3);
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {};
     var discover = new Discover({transport: transport});
     test.equal(Object.keys(discover.kBuckets).length, 0);

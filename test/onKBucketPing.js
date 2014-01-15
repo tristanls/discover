@@ -49,6 +49,9 @@ test["on 'ping' forces transport.ping() of all old contacts"] = function (test) 
     var fuzBufferBase64 = fuzBuffer.toString("base64");
 
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {};
     var count = 0;
     transport.ping = function (contact) {
@@ -87,6 +90,9 @@ test["on 'ping' removes old contact from this bucket if old contact is unreachab
     test.ok(KBucket.distance(bazBuffer, fooBuffer) < KBucket.distance(barBuffer, fooBuffer));
     
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function () {};
     transport.ping = function (contact) {
         test.equal(contact.id, fooBufferBase64);
@@ -120,6 +126,9 @@ test["on 'ping' adds new contact if old contact is unreachable"] = function (tes
     var barBufferBase64 = barBuffer.toString("base64");
     
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.ping = function (contact) {
         test.equal(contact.id, fooBufferBase64);
         transport.emit('unreachable', contact);
@@ -145,6 +154,9 @@ test["on 'ping' removes reached and unreachable listeners if all old contacts ar
     
     var transport = new events.EventEmitter();
     var kBucket;
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
     transport.ping = function (contact) {
         test.equal(contact.id, fooBufferBase64);
         // discover and the 'ping' handler listening to 'reached'
@@ -174,6 +186,9 @@ test["on 'ping' removes reached and unreachable listeners if one of old contacts
     
     var transport = new events.EventEmitter();
     var kBucket;
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.ping = function (contact) {
         test.equal(contact.id, fooBufferBase64);
         // discover and the 'ping' handler listening to 'reached'

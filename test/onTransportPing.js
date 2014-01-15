@@ -42,6 +42,9 @@ test["on 'ping' returns the contact with id and data if node is one of registere
 
     var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     var discover = new Discover({transport: transport});
     discover.register({id: fooBase64});
     transport.emit('ping', fooBase64, sender, function (error, contact) {
@@ -58,6 +61,9 @@ test["on 'ping' does not return the contact if it has been 'reached' (instead of
 
     var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function () {
         test.fail("used transport.findNode()");
     };
@@ -80,6 +86,9 @@ test["on 'ping' adds the sender to the closest KBucket to the sender"] = functio
 
     var sender = {id: barBase64, data: 'bar', host: '127.0.0.1', port: 6999};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     var discover = new Discover({
         // inlineTrace: true,
         transport: transport

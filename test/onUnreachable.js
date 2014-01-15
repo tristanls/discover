@@ -42,6 +42,9 @@ test["on 'unreachable' removes the unreachable contact from the closest KBucket"
     var barBase64 = new Buffer("bar").toString("base64");
     var transport = new events.EventEmitter();
     var initial = true;
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function (contact, nodeId) {
         if (initial) {
             test.equal(contact.id, "baz");

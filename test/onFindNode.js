@@ -42,6 +42,9 @@ test["on 'findNode' returns the contact with id and data if node is one of regis
 
     var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     var discover = new Discover({
         transport: transport
     });
@@ -60,6 +63,9 @@ test["on 'findNode' returns the contact with id and data if node has been 'reach
 
     var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     transport.findNode = function () {
         test.fail("used transport.findNode()");
     };
@@ -85,6 +91,9 @@ test["on 'findNode' returns closest nodes if node is not one of registered nodes
 
     var sender = {id: fooBase64};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     var discover = new Discover({
         transport: transport
     });
@@ -107,6 +116,9 @@ test["on 'findNode' adds the sender to the closest KBucket to the sender"] = fun
 
     var sender = {id: barBase64, data: 'bar', host: '127.0.0.1', port: 6999};
     var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };    
     var discover = new Discover({
         // inlineTrace: true,
         transport: transport
