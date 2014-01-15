@@ -26,11 +26,11 @@ transport1 = TcpTransport.listen({port: 6741}, function () {
 
 function startLocalTest() {
 
-    id1 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
-    id2 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
-    id3 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
-    id4 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
-    id5 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
+    id1 = crypto.randomBytes(20).toString('base64');
+    id2 = crypto.randomBytes(20).toString('base64');
+    id3 = crypto.randomBytes(20).toString('base64');
+    id4 = crypto.randomBytes(20).toString('base64');
+    id5 = crypto.randomBytes(20).toString('base64');
 
     discover1 = new Discover({
         inlineTrace: true, 
@@ -238,7 +238,7 @@ function continueLocalTest() {
 var id6;
 
 function continueLocalTest2() {
-    id6 = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest("base64");
+    id6 = crypto.randomBytes(20).toString('base64');
     var node6 = {id: id6, data: 'discover6', transport: {host: 'localhost', port: 6741}};
 
     console.log('~script multiple nodes per discover instance');

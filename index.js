@@ -692,7 +692,7 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
 
 /*
   * `contact`: _Object_ Contact object to register.
-    * `id`: _String (base64)_ _(Default: `crypto.createHash('sha1').digest('base64'`)_ 
+    * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ 
             The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be 
             returned for anyone querying for this `contact` by `id`
@@ -707,8 +707,10 @@ Discover.prototype.register = function register (contact) {
     contact = contact || {};
     contact = clone(contact); // separate references from outside
     
-    if (!contact.id)
-        contact.id = crypto.createHash('sha1').update('' + new Date().getTime() + process.hrtime()[1]).digest('base64');
+    if (!contact.id) {
+        contact.id = crypto.randomBytes(20).toString('base64');
+    }
+
     if (!contact.vectorClock)
         contact.vectorClock = 0;
 
