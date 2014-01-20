@@ -252,15 +252,18 @@ Unregisters previously registered `contact` (identified by `contact.id` and `con
 
 #### Event: `stats.timers.find.ms`
 
-  * `latency`: _Number_ Latency of `discover.find()` in milliseconds.
+  * `function (latency) {}`
+    * `latency`: _Number_ Latency of `discover.find()` in milliseconds.
 
 #### Event: `stats.timers.find.request.ms`
 
-  * `latency`: _Number_ Latency of a single request to another DHT server as part of a round of `discover.find()` DHT lookups.
+  * `function (latency) {}`
+    * `latency`: _Number_ Latency of a single request to another Discover noder as part of a round of `discover.find()` DHT lookups.
 
 #### Event: `stats.timers.find.round.ms`
 
-  * `latency`: _Number_ Latency of a single round of `discover.find()` DHT lookups in milliseconds.
+  * `function (latency) {}`
+    * `latency`: _Number_ Latency of a single round of `discover.find()` DHT lookups in milliseconds.
 
 ### Transport Interface
 
