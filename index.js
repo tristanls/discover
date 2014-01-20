@@ -79,11 +79,15 @@ var Discover = module.exports = function Discover (options) {
     // register a listener to update our k-buckets with nodes that we manage 
     // contact with
     self.transport.on('node', function (error, contact, nodeId, response) {
-        if (error)
+        var latency = self.timerEndInMilliseconds('find.request.ms', contact.id + nodeId);
+        if (error) {
+            self.emit('stats.timers.find.request.ms', latency);
             return; // failed contact
+        }
 
         // we successfully contacted the "contact", add it
         self.add(contact);
+        self.emit('stats.timers.find.request.ms', latency);
     });
 
     // register a listener to handle transport 'findNode' events
@@ -240,6 +244,11 @@ var Discover = module.exports = function Discover (options) {
     });
 
     self.kBuckets = {};
+    self.timers = {
+        'find.ms': {},
+        'find.request.ms': {},
+        'find.round.ms': {}
+    };
 };
 
 util.inherits(Discover, events.EventEmitter);
@@ -295,6 +304,7 @@ Discover.prototype.add = function add (remoteContact) {
 */
 Discover.prototype.executeQuery = function executeQuery (query, callback) {
     var self = this;
+    self.timerStart('find.round.ms', query.nodeId);
 
     if (self.tracing)
         self.trace('executeQuery(' + util.inspect(query, false, null) + ')');
@@ -304,8 +314,14 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
         return;
 
     // if we have no nodes, we can't query anything
-    if (!query.nodes || query.nodes.length == 0)
-        return callback(new Error("No known nodes to query"));
+    if (!query.nodes || query.nodes.length == 0) {
+        var latency = self.timerEndInMilliseconds('find.ms', query.nodeId);
+        var roundLatency = self.timerEndInMilliseconds('find.round.ms', query.nodeId);
+        callback(new Error("No known nodes to query"));
+        self.emit('stats.timers.find.ms', latency);
+        self.emit('stats.timers.find.round.ms', roundLatency);
+        return;
+    }
 
     if (query.index === undefined)
         query.index = 0;
@@ -422,9 +438,13 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
             }
             
             // return the response and stop querying
+            var latency = self.timerEndInMilliseconds('find.ms', nodeId);
+            var roundLatency = self.timerEndInMilliseconds('find.round.ms', nodeId);
             callback(null, response);
             query.done = true;
             self.transport.removeListener('node', query.listener);
+            self.emit('stats.timers.find.ms', latency);
+            self.emit('stats.timers.find.round.ms', roundLatency);
             return;
         };
         self.transport.on('node', query.listener);
@@ -436,6 +456,7 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
         query.index++) {
 
         query.ongoingRequests++;
+        self.timerStart('find.request.ms', query.nodes[query.index].id + query.nodeId);
         self.transport.findNode(query.nodes[query.index], query.nodeId, query.sender);
     }
 
@@ -456,11 +477,20 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
 */
 Discover.prototype.find = function find (nodeId, callback, announce) {
     var self = this;
-    var traceHeader = "find(" + nodeId + "): ";
+    self.timerStart('find.ms', nodeId);
+
+    var traceHeader;
+
+    if (self.tracing) {
+        traceHeader = "find(" + nodeId + "): ";
+    }
 
     // see if we have a local match, and return it if not announcing
     if (!announce && self.kBuckets[nodeId]) {
-        return callback(null, self.kBuckets[nodeId].contact);
+        var latency = self.timerEndInMilliseconds('find.ms', nodeId);
+        callback(null, self.kBuckets[nodeId].contact);
+        self.emit('stats.timers.find.ms', latency);
+        return;
     }
 
     // if we have no kBuckets, that means we haven't registered any nodes yet
@@ -496,8 +526,11 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
         var contact = clone(closestContacts[0]);
         contact.id = contact.id.toString("base64");
         // hide internal implementation details
-        delete contact.distance; 
-        return callback(null, contact);
+        delete contact.distance;
+        var latency = self.timerEndInMilliseconds('find.ms', nodeId);
+        callback(null, contact);
+        self.emit('stats.timers.find.ms', latency);
+        return;
     }
 
     // closestContacts will contain contacts with id as a Buffer, we clone
@@ -535,9 +568,13 @@ Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback, annou
 
     // if we have no seeds, that means we don't know of any other nodes to query
     if (!self.seeds || self.seeds.length == 0) {
-        if (self.tracing)
+        if (self.tracing) {
             self.trace(traceHeader + 'No known seeds to query');
-        return callback(new Error("No known seeds to query"));
+        }
+        var latency = self.timerEndInMilliseconds('find.ms', nodeId);
+        callback(new Error("No known seeds to query"));
+        self.emit('stats.timers.find.ms', latency);
+        return;
     }
 
     var closestNodes = [];
@@ -651,6 +688,8 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
         // find out if any new nodes are closer than the closest
         // node in order to determine if we should keep going or
         // stop
+        self.emit('stats.timers.find.round.ms',
+            self.timerEndInMilliseconds('find.round.ms', query.nodeId));
         
         // console.log('sorting new nodes');
         // sort the new nodes according to distance
@@ -686,7 +725,10 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
                 return callback(null, query.closest);
             } else {
                 // console.log("returning not found error");
-                return callback(new Error("not found"));
+                var latency = self.timerEndInMilliseconds('find.ms', query.nodeId);
+                callback(new Error("not found"));
+                self.emit('stats.timers.find.ms', latency);
+                return;
             }
         }
 
@@ -798,6 +840,39 @@ Discover.prototype.register = function register (contact) {
     self.find(contact.id, function () {}, contact /*announce*/);
 
     return clone(contact); // don't leak internal implementation
+};
+
+/*
+  * `type`: _String_ Timer type.
+  * `key`: _String_ Timer key.
+  * Return: _Number_ Milliseconds since the first time in the timer.
+*/
+Discover.prototype.timerEndInMilliseconds = function timerEndInMilliseconds(type, key) {
+    var self = this;
+
+    if (!self.timers[type] || !self.timers[type][key]) {
+        return 0;
+    }
+
+    var diff = process.hrtime(self.timers[type][key].shift());
+    if (self.timers[type][key].length == 0) {
+        delete self.timers[type][key];
+    }
+    // diff[0] : seconds
+    // diff[1] : nanoseconds
+    // 1 second = 1e9 nanoseconds
+    // 1 millisecond = 1e6 nanoseconds
+    return Math.floor((diff[0] * 1e9 + diff[1]) / 1e6);
+};
+
+/*
+  * `type`: _String_ Timer type.
+  * `key`: _String_ Timer key.
+*/
+Discover.prototype.timerStart = function timerStart(type, key) {
+    var self = this;
+    self.timers[type][key] = self.timers[type][key] || [];
+    self.timers[type][key].push(process.hrtime());
 };
 
 /*

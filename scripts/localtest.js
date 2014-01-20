@@ -197,6 +197,20 @@ function startLocalTest() {
     discover4.register(node4);
     discover5.register(node5);
 
+    var discoverNodes = [discover1, discover2, discover3, discover4, discover5];
+
+    discoverNodes.forEach(function (discoverNode) {
+        discoverNode.on('stats.timers.find.ms', function (latency) {
+            console.log('~stats: stats.timers.find.ms ' + latency);
+        });
+        discoverNode.on('stats.timers.find.round.ms', function (latency) {
+            console.log('~stats: stats.timers.find.round.ms ' + latency);
+        });
+        discoverNode.on('stats.timers.find.request.ms', function (latency) {
+            console.log('~stats: stats.timers.find.request.ms ' + latency);
+        });
+    });
+
     console.log('~script self-registrations complete');
     console.log('~script allowing nodes to communicate and settle');
 

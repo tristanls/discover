@@ -36,8 +36,16 @@ var events = require('events'),
 
 var test = module.exports = {};
 
+var expectDone = function expectDone(test, expected) {
+    return function () {
+        if (--expected == 0) {
+            test.done();
+        }
+    };
+};
+
 test["on 'node' adds the reached contact to the closest KBucket"] = function (test) {
-    test.expect(2);
+    test.expect(4);
     var fooBase64 = new Buffer("foo").toString("base64");
     var barBase64 = new Buffer("bar").toString("base64");
     var transport = new events.EventEmitter();
@@ -49,10 +57,25 @@ test["on 'node' adds the reached contact to the closest KBucket"] = function (te
     });
     discover.register({id: fooBase64});
     // "foo" is the closest (and only) KBucket
+
+    var done = expectDone(test, 3);
+
+    discover.on('stats.timers.find.ms', function (latency) {
+        test.ok(true); // 1
+        done();
+    });
+    discover.on('stats.timers.find.request.ms', function (latency) {
+        test.equal(latency, 0); // 1
+        done();
+    });
+    discover.on('stats.timers.find.round.ms', function (latency) {
+        test.ok(false, 'stats.timers.find.round.ms should not be called');
+    });
+
     transport.emit('node', null, {id: barBase64});
     discover.find(barBase64, function (error, contact) {
         test.ok(!error);
         test.deepEqual(contact, {id: barBase64});
     });
-    test.done();
+    done();
 };

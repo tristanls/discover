@@ -148,6 +148,9 @@ _For more detailed documentation including private methods see [Discover doc](do
   * [discover.register(contact)](#discoverregistercontact)
   * [discover.unreachable(contact)](#discoverunreachablecontact)
   * [discover.unregister(contact)](#discoverunregistercontact)
+  * [Event 'stats.timers.find.ms'](#event-statstimersfindms)
+  * [Event 'stats.timers.find.request.ms'](#event-statstimersfindrequestms)
+  * [Event 'stats.timers.find.round.ms'](#event-statstimersfindroundms)
 
 ### new Discover(options)
 
@@ -246,6 +249,18 @@ discover.find("Zm9v", function (error, contact) {
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
 Unregisters previously registered `contact` (identified by `contact.id` and `contact.vectorClock`) from the network.
+
+#### Event: `stats.timers.find.ms`
+
+  * `latency`: _Number_ Latency of `discover.find()` in milliseconds.
+
+#### Event: `stats.timers.find.request.ms`
+
+  * `latency`: _Number_ Latency of a single request to another DHT server as part of a round of `discover.find()` DHT lookups.
+
+#### Event: `stats.timers.find.round.ms`
+
+  * `latency`: _Number_ Latency of a single round of `discover.find()` DHT lookups in milliseconds.
 
 ### Transport Interface
 

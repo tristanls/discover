@@ -13,9 +13,14 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
   * [discover.getClosestKBuckets(nodeId)](#discovergetclosestkbucketsnodeid)
   * [discover.queryCompletionCheck(query, callback)](#discoverquerycompletioncheckquery-callback)
   * [discover.register(contact)](#discoverregistercontact)
+  * [discover.timerEndInMilliseconds(type, key)](#discovertimerendinmillisecondstype-key)
+  * [discover.timerStart(type, key)](#discovertimerstarttype-key)
   * [discover.trace(message)](#discovertracemessage)
   * [discover.unreachable(contact)](#discoverunreachablecontact)
   * [discover.unregister(contact)](#discoverunregistercontact)
+  * [Event 'stats.timers.find.ms'](#event-statstimersfindms)
+  * [Event 'stats.timers.find.request.ms'](#event-statstimersfindrequestms)
+  * [Event 'stats.timers.find.round.ms'](#event-statstimersfindroundms)
 
 #### new Discover(options)
 
@@ -147,6 +152,25 @@ discover.register({
 
 _NOTE: Current implementation creates a new k-bucket for every registered node id. It is important to remember that a k-bucket could store up to k*lg(n) contacts, where lg is log base 2, n is the number of registered node ids on the network, and k is the size of each k-bucket (by default 20). For 1 billion registered nodes on the network, each k-bucket could store around 20 * lg (1,000,000,000) = ~ 598 contacts. This isn't bad, until you have 1 million local entities for a total of 598,000,000 contacts plus k-bucket overhead, which starts to put real pressure on Node.js/V8 memory limit._
 
+#### discover.timerEndInMilliseconds(type, key)
+
+_**CAUTION: reserved for internal use**_
+
+  * `type`: _String_ Timer type.
+  * `key`: _String_ Timer key.
+  * Return: _Number_ Milliseconds since the first time in the timer.
+
+Calculates a millisecond interval between now and the first timer that was stored at `type` and `key`.
+
+#### discover.timerStart(type, key)
+
+_**CAUTION: reserved for internal use**_
+
+  * `type`: _String_ Timer type.
+  * `key`: _String_ Timer key.
+
+Starts a new timer indexed by `type` and `key`. Multiple starts will result in start times being stored in an array for use by `discover.timerEndInMilliseconds()` later.
+
 #### discover.trace(message)
 
   * `message`: _String_ Message to trace.
@@ -182,3 +206,15 @@ discover.find("Zm9v", function (error, contact) {
     * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
 Unregisters previously registered `contact` (identified by `contact.id` and `contact.vectorClock`) from the network.
+
+#### Event: `stats.timers.find.ms`
+
+  * `latency`: _Number_ Latency of `discover.find()` in milliseconds.
+
+#### Event: `stats.timers.find.request.ms`
+
+  * `latency`: _Number_ Latency of a single request to another DHT server as part of a round of `discover.find()` DHT lookups.
+
+#### Event: `stats.timers.find.round.ms`
+
+  * `latency`: _Number_ Latency of a single round of `discover.find()` DHT lookups in milliseconds.
