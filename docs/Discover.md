@@ -5,6 +5,7 @@ This is a more detailed documentation that includes private methods for referenc
 Node ids in Discover are represented as base64 encoded Strings. This is because the default generated node ids (SHA-1 hashes) could be unsafe to print. `base64` encoding was picked over `hex` encoding because it takes up less space when printed or serialized in ASCII over the wire.
 
   * [new Discover(options)](#new-discoveroptions)
+  * [discover.add(remoteContact)](#discoveraddremotecontact)
   * [discover.executeQuery(query, callback)](#discoverexecutequeryquery-callback)
   * [discover.find(nodeId, callback, \[announce\])](#discoverfindnodeid-callback-announce)
   * [discover.findViaSeeds(nodeId, callback, \[announce\])](#discoverfindviaseedsnodeid-callback-announce)
@@ -28,6 +29,26 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
 Creates a new Discover instance.
 
 The `seeds` are necessary if joining an existing Discover cluster. Discover will use these `seeds` to announce itself to other nodes in the cluster. If `seeds` are not provided, then it is assumed that this is a seed node, and other nodes will include this node's address in their `seeds` option. It all has to start somewhere.
+
+#### discover.add(remoteContact)
+
+  * `remoteContact`: _Object_ Contact object to add that is not managed by this Discover node.
+    * `id`: _String (base64)_ The contact id, base64 encoded.
+    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`.
+    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
+  * Return: _Object_ Contact that was added with `vectorClock` generated if necessary.
+
+Adds the `remoteContact`. This is different from `discover.register(contact)` in that adding a `remoteContact` means that the `remoteContact` _is not_ managed by this Discover node.
+
+The use-case motivating existence of this method is being able to hint where to send a response in a request-response type of asynchronous messaging between nodes that are part of the same Discover DHT. More precisely:
+
+  1. Server A creates a contact Alpha and registers it with Discover.
+  2. Server A queries Discover to find contact Beta (already existing).
+  3. Discover responds that contact Beta is on Server B.
+  4. Server A sends a message to contact Beta (on Server B) expecting a response to contact Alpha.
+  5. Server B wants to respond to Alpha "quickly". At this point, the contact Alpha information has not propagated through the DHT, so Server B will have to wait for it's Discover instance to query the DHT and make multiple trips looking for contact Alpha.
+
+In order to "speed up" step 5 above, we'd like to be able to hint information that is known, but maybe has not propagated yet. This means, that as part of step 4 above, we could also send a "hint" containing information on contact Alpha. This way, when Server B receives the message with a "hint", it can use `discover.add(remoteContact)` to populate it's local Discover cache without additional network traffic.
 
 #### discover.executeQuery(query, callback)
 
