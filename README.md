@@ -10,6 +10,17 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 [@tristanls](https://github.com/tristanls), [@mikedeboer](https://github.com/mikedeboer)
 
+## Contents
+
+  * [Installation](#installation)
+  * [Tests](#tests)
+  * [Overview](#overview)
+  * [Documentation](#documentation)
+    * [Discover](#discover-1)
+    * [Transport Interface](#transport-interface)
+  * [Road Map](#road-map)
+  * [Sources](#sources)
+
 ## Installation
 
     npm install discover
