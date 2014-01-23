@@ -53,6 +53,7 @@ test["on 'node' adds the reached contact to the closest KBucket"] = function (te
         return contact;
     };    
     var discover = new Discover({
+        noCache: true,
         transport: transport
     });
     discover.register({id: fooBase64});

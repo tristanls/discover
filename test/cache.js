@@ -1,6 +1,6 @@
 /*
 
-add.js - discover.add(remoteContact) test
+cache.js - discover LRU cache test
 
 The MIT License (MIT)
 
@@ -37,76 +37,62 @@ var Discover = require('../index.js');
 
 var test = module.exports = {};
 
-test['add() should throw an exception if contact is missing id'] = function (test) {
-    test.expect(1);
-    var transport = new events.EventEmitter();
-    transport.setTransportInfo = function (contact) {
-        return contact;
-    };
-    var discover = new Discover({transport: transport});
-    test.throws(function () {
-        discover.add({});
-    }, Error);    
-    test.done();
-};
-
-test['add() should throw an exception if contact id is not a string'] = function (test) {
-    test.expect(1);
-    var transport = new events.EventEmitter();
-    transport.setTransportInfo = function (contact) {
-        return contact;
-    };
-    var discover = new Discover({transport: transport});
-    test.throws(function () {
-        discover.add({id: 1});
-    }, Error);    
-    test.done();
-};
-
-test['add() should return null if no KBuckets to add to'] = function (test) {
-    test.expect(1);
-    var barBase64 = new Buffer("bar").toString("base64");
-    var transport = new events.EventEmitter();
-    transport.setTransportInfo = function (contact) {
-        return contact;
-    };
-    var discover = new Discover({transport: transport});
-    var contact = discover.add({id: barBase64});
-    test.strictEqual(contact, null);
-    test.done();
-};
-
-test['add() adds the remote contact to the closest KBucket'] = function (test) {
-    test.expect(2);
-    var fooBase64 = new Buffer("foo").toString("base64");
+test["'noCache' option set turns off caching"] = function (test) {
+    test.expect(3);
     var barBase64 = new Buffer("bar").toString("base64");
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
     };
     var discover = new Discover({noCache: true, transport: transport});
-    discover.register({id: fooBase64});
-    // "foo" is the closest (and only) KBucket
-    discover.add({id: barBase64});
+    var contact = discover.add({id: barBase64});
+    test.strictEqual(contact, null);
     discover.find(barBase64, function (error, contact) {
-        test.ok(!error);
-        test.deepEqual(contact, {id: barBase64});
+        test.ok(error);
+        test.ok(!contact);
+        test.done();
     });
-    test.done();
 };
 
-test['add() returns the contact on successful add'] = function (test) {
-    test.expect(1);
-    var fooBase64 = new Buffer("foo").toString("base64");
+test["caching is on by default"] = function (test) {
+    test.expect(3);
     var barBase64 = new Buffer("bar").toString("base64");
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
     };
     var discover = new Discover({transport: transport});
-    discover.register({id: fooBase64});
-    // "foo" is the closest (and only) KBucket
     var contact = discover.add({id: barBase64});
-    test.deepEqual(contact, {id: barBase64});
-    test.done();
+    test.strictEqual(contact, null); // no k-buckets to insert into
+    discover.find(barBase64, function (error, contact) {
+        test.ok(!error);
+        test.deepEqual(contact, {id: barBase64}); // cached contact
+        test.done();
+    });
+};
+
+test["'maxCacheSize' option sets maximum cache size"] = function (test) {
+    test.expect(6);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    var discover = new Discover({maxCacheSize: 1, transport: transport});
+    var contact = discover.add({id: barBase64}); // bar takes the 1 spot in cache
+    test.strictEqual(contact, null);
+    contact = discover.add({id: fooBase64}); // foo takes over only spot in cache
+    test.strictEqual(contact, null);
+    discover.find(barBase64, function (error, contact) {
+        // bar was ejected out of the cache by foo
+        test.ok(error);
+        test.ok(!contact);
+        discover.find(fooBase64, function (error, contact) {
+            // foo was in cache
+            test.ok(!error);
+            test.deepEqual(contact, {id: fooBase64});
+            test.done();
+        });
+    });
 };

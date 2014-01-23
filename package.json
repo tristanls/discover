@@ -7,13 +7,14 @@
     "test": "node scripts/test.js"
   },
   "main": "index.js",
+  "devDependencies": {
+    "nodeunit": "0.8.2"
+  },
   "dependencies": {
     "clone": "0.1.11",
     "discover-tcp-transport": "4.0.0",
-    "k-bucket": "0.3.1"
-  },
-  "devDependencies": {
-    "nodeunit": "0.8.2"
+    "k-bucket": "0.3.1",
+    "lru-cache": "2.5.0"
   },
   "repository": {
     "type": "git",

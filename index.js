@@ -34,6 +34,7 @@ var clone = require('clone'),
     crypto = require('crypto'),
     events = require('events'),
     KBucket = require('k-bucket'),
+    LruCache = require('lru-cache'),
     util = require('util');
 
 /*
@@ -44,6 +45,10 @@ var clone = require('clone'),
             emit `~trace` events for debugging purposes.
     * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover 
             will log to console `~trace` messages for debugging purposes.
+    * `maxCacheSize`: _Number_ _(Default: 1000)_ Maximum number of `contacts` to
+            keep in non-kBucket cache (see #6)
+    * `noCache`: _Boolean_ _(Default: false)_ If `true`, non-kBucket cache is not
+            used.
     * `seeds`: _Array_ _(Default: [])_ An array of seed `contact` Objects that 
             the `transport` understands.
     * `transport`: _Object_ _(Default: `discover-tcp-transport`)_ An optional 
@@ -60,6 +65,8 @@ var Discover = module.exports = function Discover (options) {
     options = options || {};
 
     self.CONCURRENCY_CONSTANT = options.CONCURRENCY_CONSTANT || 3;
+    self.maxCacheSize = options.maxCacheSize || 1000;
+    self.noCache = options.noCache === undefined ? false : options.noCache;
     self.seeds = options.seeds || [];
     // configure tracing for debugging purposes
     // TODO: probably change this to some sort of sane logging
@@ -244,6 +251,11 @@ var Discover = module.exports = function Discover (options) {
     });
 
     self.kBuckets = {};
+    if (self.noCache) {
+        self.lruCache = {set: function () {}, get: function () {}};
+    } else {
+        self.lruCache = LruCache(self.maxCacheSize);
+    }
     self.timers = {
         'find.ms': {},
         'find.request.ms': {},
@@ -269,6 +281,10 @@ Discover.prototype.add = function add (remoteContact) {
     if (!remoteContact.id || typeof remoteContact.id !== 'string') {
         throw new Error("Invalid or missing contact.id");
     }
+
+    // even if we don't have kBuckets to update, we can still store information
+    // in LRU cache
+    self.lruCache.set(remoteContact.id, remoteContact);
 
     if (Object.keys(self.kBuckets).length == 0) {
         return null; // no k-buckets to update
@@ -489,6 +505,15 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
     if (!announce && self.kBuckets[nodeId]) {
         var latency = self.timerEndInMilliseconds('find.ms', nodeId);
         callback(null, self.kBuckets[nodeId].contact);
+        self.emit('stats.timers.find.ms', latency);
+        return;
+    }
+
+    // see if we have a cache match, and return it if not announcing
+    var cached = self.lruCache.get(nodeId);
+    if (!announce && cached) {
+        var latency = self.timerEndInMilliseconds('find.ms', nodeId);
+        callback(null, cached);
         self.emit('stats.timers.find.ms', latency);
         return;
     }

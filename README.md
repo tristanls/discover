@@ -158,6 +158,8 @@ _For more detailed documentation including private methods see [Discover doc](do
     * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent FIND-NODE requests to the network per `find` request.
     * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will emit `~trace` events for debugging purposes.
     * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will log to console `~trace` messages for debugging purposes.
+    * `maxCacheSize`: _Number_ _(Default: 1000)_ Maximum number of `contacts` to keep in non-kBucket cache (see #6)
+    * `noCache`: _Boolean_ _(Default: false)_ If `true`, non-kBucket cache is not used.
     * `seeds`: _Array_ _(Default: [])_ An array of seed `contact` Objects that the `transport` understands.
     * `transport`: _Object_ _(Default: `discover-tcp-transport`)_ An optional initialized and ready to use transport module for sending communications that conforms to the Transport Protocol. If `transport` is not provided, a new instance of `discover-tcp-transport` will be created and used with default settings.
 
