@@ -286,9 +286,9 @@ Discover.prototype.add = function add (remoteContact) {
     // in LRU cache (check vectorClock field to update cache with latest only)
     var cached = self.lruCache.get(remoteContact.id);
     if (!cached
-        || cached && !cached.vectorClock
-        || cached && cached.vectorClock && remoteContact.vectorClock
-        && (remoteContact.vectorClock >= cached.vectorClock)) {
+        || (cached && !cached.vectorClock)
+        || (cached && cached.vectorClock && remoteContact.vectorClock
+            && (remoteContact.vectorClock >= cached.vectorClock))) {
 
         self.lruCache.set(remoteContact.id, remoteContact);
     }
