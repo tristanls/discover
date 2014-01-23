@@ -285,7 +285,9 @@ Discover.prototype.add = function add (remoteContact) {
     // even if we don't have kBuckets to update, we can still store information
     // in LRU cache (check vectorClock field to update cache with latest only)
     var cached = self.lruCache.get(remoteContact.id);
-    if (!cached || cached && cached.vectorClock && remoteContact.vectorClock
+    if (!cached
+        || cached && !cached.vectorClock
+        || cached && cached.vectorClock && remoteContact.vectorClock
         && (remoteContact.vectorClock >= cached.vectorClock)) {
 
         self.lruCache.set(remoteContact.id, remoteContact);
