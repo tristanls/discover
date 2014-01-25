@@ -435,7 +435,6 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 
 This is roughly in order of current priority:
 
-  * **Interface Specification**: The interface points between `discover`, `transport`, and `k-bucket` are still experimental but are quickly converging on what they need to be in order to support the functionality
   * **Implementation Correctness**: Gain confidence that the protocol functions as expected. This should involve running a lot of nodes and measuring information distribution latency and accuracy.
   * **TLS Transport** _(separate module)_ or it might make sense to change the TCP Transport into Net Transport and include within both TCP and TLS.
   * **UDP Transport** _(separate module)_
