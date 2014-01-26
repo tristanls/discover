@@ -44,25 +44,66 @@ test["on 'unreachable' removes the unreachable contact from the closest KBucket"
     var initial = true;
     transport.setTransportInfo = function (contact) {
         return contact;
-    };    
+    };
     transport.findNode = function (contact, nodeId) {
         if (initial) {
             test.equal(contact.id, "baz");
-            test.equal(contact.ip, "127.0.0.1");
-            test.equal(contact.port, 6742);
+            test.equal(contact.transport.ip, "127.0.0.1");
+            test.equal(contact.transport.port, 6742);
             test.equal(nodeId, fooBase64);
             initial = false;
         } else {
             test.equal(contact.id, "baz");
-            test.equal(contact.ip, "127.0.0.1");
-            test.equal(contact.port, 6742);
+            test.equal(contact.transport.ip, "127.0.0.1");
+            test.equal(contact.transport.port, 6742);
             test.equal(nodeId, barBase64);
             test.done();
         }
     };
     var discover = new Discover({
-        // inlineTrace: true, 
-        seeds: [{id: "baz", ip: "127.0.0.1", port: 6742}],
+        // inlineTrace: true,
+        noCache: true,
+        seeds: [{id: "baz", transport: {ip: "127.0.0.1", port: 6742}}],
+        transport: transport
+    });
+    discover.register({id: fooBase64});
+    // "foo" is the closest (and only) KBucket
+    transport.emit('reached', {id: barBase64});
+    // "bar" is put in "foo" KBucket
+    transport.emit('unreachable', {id: barBase64});
+    discover.find(barBase64, function (error, contact) {
+        // because unreachable removed "bar"
+        // we expect findNode request to happen
+    });
+};
+
+test["on 'unreachable' removes the unreachable contact from non-kBucket LRU cache"] = function (test) {
+    test.expect(8);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var transport = new events.EventEmitter();
+    var initial = true;
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    transport.findNode = function (contact, nodeId) {
+        if (initial) {
+            test.equal(contact.id, "baz");
+            test.equal(contact.transport.ip, "127.0.0.1");
+            test.equal(contact.transport.port, 6742);
+            test.equal(nodeId, fooBase64);
+            initial = false;
+        } else {
+            test.equal(contact.id, "baz");
+            test.equal(contact.transport.ip, "127.0.0.1");
+            test.equal(contact.transport.port, 6742);
+            test.equal(nodeId, barBase64);
+            test.done();
+        }
+    };
+    var discover = new Discover({
+        // inlineTrace: true,
+        seeds: [{id: "baz", transport: {ip: "127.0.0.1", port: 6742}}],
         transport: transport
     });
     discover.register({id: fooBase64});
@@ -77,11 +118,28 @@ test["on 'unreachable' removes the unreachable contact from the closest KBucket"
 };
 
 test["on 'unreachable' removes the unreachable contact if no KBuckets"] = function (test) {
-    test.expect(0);
+    test.expect(2);
     var fooBase64 = new Buffer("foo").toString("base64");
     var barBase64 = new Buffer("bar").toString("base64");
     var transport = new events.EventEmitter();
-    var discover = new Discover({transport: transport});
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    transport.findNode = function (contact, nodeId) {
+        test.equal(contact.id, "baz");
+        test.equal(nodeId, barBase64);
+        test.done();
+    };
+    var discover = new Discover({
+        // inlineTrace: true,
+        seeds: [{id: "baz", transport: {ip: "127.0.0.1", port: 6742}}],
+        transport: transport
+    });
+    // no KBuckets, but we have data in cache that needs to be removed
+    discover.lruCache.set(barBase64, {id: barBase64});
     transport.emit('unreachable', {id: barBase64});
-    test.done();
+    discover.find(barBase64, function (error, contact) {
+        // because unreachable removed "bar"
+        // we expect findNode request to happen
+    });
 };

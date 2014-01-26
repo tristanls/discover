@@ -211,32 +211,16 @@ var Discover = module.exports = function Discover (options) {
 
     // register a listener to handle transport 'unreachable' events
     self.transport.on('unreachable', function (contact) {
-        if (self.tracing)
-            self.trace('unreachable ' + util.inspect(contact));
-        // find closest KBucket to remove unreachable contact from
-        var closestKBuckets = self.getClosestKBuckets(contact.id);
-        if (closestKBuckets.length == 0) {
-            if (self.tracing)
-                self.trace('no kBuckets for unreachable contact ' + util.inspect(contact));
-            return;
-        }
-        var closestKBucketId = closestKBuckets[0].id;
-        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
-        if (!closestKBucket) {
-            if (self.tracing)
-                self.trace('no closest kBucket for unreachable contact ' + util.inspect(contact));
-            return;
-        }
-        var clonedContact = clone(contact);
-        if (self.tracing)
-            self.trace('removing ' + util.inspect(contact) + ' from kBucket ' + closestKBucketId);
-        clonedContact.id = new Buffer(contact.id, "base64");
-        closestKBucket.remove(clonedContact);
+        self.unreachable(contact);
     });
 
     self.kBuckets = {};
     if (self.noCache) {
-        self.lruCache = {set: function () {}, get: function () {}};
+        self.lruCache = {
+            del: function () {},
+            get: function () {},
+            set: function () {},
+        };
     } else {
         self.lruCache = LruCache(self.maxCacheSize);
     }
@@ -915,6 +899,10 @@ Discover.prototype.unreachable = function unreachable (contact) {
     var self = this;
     if (self.tracing)
         self.trace('unreachable(' + util.inspect(contact) + ')');
+
+    // even if we don't have kBuckets, remove contact from LRU cache
+    self.lruCache.del(contact.id);
+
     // find closest KBucket to remove unreachable contact from
     var closestKBuckets = self.getClosestKBuckets(contact.id);
     if (closestKBuckets.length == 0) {
