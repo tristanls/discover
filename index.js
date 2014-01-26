@@ -204,25 +204,9 @@ var Discover = module.exports = function Discover (options) {
     self.transport.on('reached', function (contact) {
         if (self.tracing)
             self.trace('reached ' + util.inspect(contact));
-        // find closest KBucket to place reached contact in
-        var closestKBuckets = self.getClosestKBuckets(contact.id);
-        if (closestKBuckets.length == 0) {
-            if (self.tracing)
-                self.trace('no kBuckets for reached contact ' + util.inspect(contact));
-            return;
-        }
-        var closestKBucketId = closestKBuckets[0].id;
-        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
-        if (!closestKBucket) {
-            if (self.tracing)
-                self.trace('no closest kBucket for reached contact ' + util.inspect(contact));
-            return;
-        }
-        var clonedContact = clone(contact);
-        if (self.tracing)
-            self.trace('adding ' + util.inspect(clonedContact) + ' to kBucket ' + closestKBucketId);
-        clonedContact.id = new Buffer(contact.id, "base64");
-        closestKBucket.add(clonedContact);
+
+        // we successfully reached a contact, add it (refreshes the contact)
+        self.add(contact);
     });
 
     // register a listener to handle transport 'unreachable' events
