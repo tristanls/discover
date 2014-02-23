@@ -463,3 +463,7 @@ An elaboration would be to distribute known contacts to other k-buckets when a `
 The implementation has been sourced from:
 
   - [A formal specification of the Kademlia distributed hash table](http://maude.sip.ucm.es/kademlia/files/pita_kademlia.pdf)
+
+### Background Reading
+
+  - [Eventually Consistent: Not What You Were Expecting?](http://queue.acm.org/detail.cfm?id=2582994)
