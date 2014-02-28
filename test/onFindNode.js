@@ -4,7 +4,7 @@ onFindNode.js - transport.emit('findNode', ...) test
 
 The MIT License (MIT)
 
-Copyright (c) 2013 Tristan Slominski
+Copyright (c) 2013-2014 Tristan Slominski
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -200,10 +200,43 @@ test["on 'findNode' adds the sender to the closest KBucket to the sender"] = fun
     transport.emit('findNode', barBase64, sender, function (error, contacts) {
         test.ok(!error);
         test.deepEqual(contacts, []);
-        var util = require('util');
         var closest = kBucket.closest({id: barBuffer});
         test.equal(closest.length, 1);
         test.equal(closest[0].id.toString("base64"), barBase64);
+        test.done();
+    });
+};
+
+test["on 'findNode' adds the sender as the local KBucket contact if id matches a local KBucket and arbiter returns candidate"] = function (test) {
+    test.expect(4);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBuffer = new Buffer("bar");
+    var barBase64 = barBuffer.toString("base64");
+
+    var arbiter = function arbiter(incumbent, candidate) {
+        return candidate;
+    };
+    var arbiterDefaults = function arbiterDefaults(contact) {
+        return contact;
+    };
+    var sender = {id: fooBase64, data: 'updated'};
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    var discover = new Discover({
+        arbiter: arbiter,
+        arbiterDefaults: arbiterDefaults,
+        // inlineTrace: true,
+        transport: transport
+    });
+    discover.register({id: fooBase64, data: 'foo'});
+    transport.emit('findNode', barBase64, sender, function (error, contacts) {
+        test.ok(!error);
+        test.deepEqual(contacts, []);
+        var contact = discover.kBuckets[fooBase64].contact;
+        test.equal(contact.id, fooBase64);
+        test.equal(contact.data, "updated");
         test.done();
     });
 };

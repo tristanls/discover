@@ -148,26 +148,35 @@ var Discover = module.exports = function Discover (options) {
             // we do it only after we already got the closest contact to prevent
             // always responding with exact match to the sender if the sender is
             // announcing (searching for itself)
-            var senderClosestKBuckets = self.getClosestKBuckets(sender.id);
-            if (senderClosestKBuckets.length == 0) {
-                if (self.tracing)
-                    self.trace('no kBuckets for findNode sender '
-                        + util.inspect(sender));
+
+            // first, check if sender contact id is locally registered
+            if (self.kBuckets[sender.id]) {
+                // sender is the same as locally registered contact
+                // need to arbiter which contact version should be retained
+                self.kBuckets[sender.id].contact =
+                    self.arbiter(self.kBuckets[sender.id].contact, sender);
             } else {
-                var senderClosestKBucketId = senderClosestKBuckets[0].id;
-                var senderClosestKBucket =
-                    self.kBuckets[senderClosestKBucketId].kBucket;
-                if (!senderClosestKBucket) {
+                var senderClosestKBuckets = self.getClosestKBuckets(sender.id);
+                if (senderClosestKBuckets.length == 0) {
                     if (self.tracing)
-                        self.trace('no closest kBucket for findNode sender '
+                        self.trace('no kBuckets for findNode sender '
                             + util.inspect(sender));
                 } else {
-                    var clonedSender = clone(sender);
-                    if (self.tracing)
-                        self.trace('adding ' + util.inspect(clonedSender)
-                            + ' to kBucket ' + senderClosestKBucketId);
-                    clonedSender.id = new Buffer(clonedSender.id, "base64");
-                    senderClosestKBucket.add(clonedSender);
+                    var senderClosestKBucketId = senderClosestKBuckets[0].id;
+                    var senderClosestKBucket =
+                        self.kBuckets[senderClosestKBucketId].kBucket;
+                    if (!senderClosestKBucket) {
+                        if (self.tracing)
+                            self.trace('no closest kBucket for findNode sender '
+                                + util.inspect(sender));
+                    } else {
+                        var clonedSender = clone(sender);
+                        if (self.tracing)
+                            self.trace('adding ' + util.inspect(clonedSender)
+                                + ' to kBucket ' + senderClosestKBucketId);
+                        clonedSender.id = new Buffer(clonedSender.id, "base64");
+                        senderClosestKBucket.add(clonedSender);
+                    }
                 }
             }
         }
@@ -299,19 +308,28 @@ Discover.prototype.add = function add (remoteContact) {
         return null; // no k-buckets to update
     }
 
-    // we pick the closes kBucket to the node id of our contact to store the
-    // data in, since they have the most space to accomodate near-by node ids
-    // (inherent KBucket property)
-    var closestKBuckets = self.getClosestKBuckets(remoteContact.id);
-    var closestKBucketId = closestKBuckets[0].id;
-    var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
-    var clonedContact = clone(remoteContact);
-    if (self.tracing) {
-        self.trace('adding ' + util.inspect(clonedContact) + ' to kBucket ' + closestKBucketId);
+    // first, check if remote contact id is locally registered
+    if (self.kBuckets[remoteContact.id]) {
+        // remote contact id is same as locally registered contact id
+        // need to arbiter which contact version should be retained
+        // (we already calculated the selection)
+        self.kBuckets[remoteContact.id].contact = selection;
+    } else {
+        // we pick the closest kBucket to the node id of our contact to store the
+        // data in, since they have the most space to accomodate near-by node ids
+        // (inherent KBucket property)
+        var closestKBuckets = self.getClosestKBuckets(remoteContact.id);
+        var closestKBucketId = closestKBuckets[0].id;
+        var closestKBucket = self.kBuckets[closestKBucketId].kBucket;
+        var clonedContact = clone(remoteContact);
+        if (self.tracing) {
+            self.trace('adding ' + util.inspect(clonedContact) + ' to kBucket '
+                + closestKBucketId);
+        }
+        // convert id from string to Buffer
+        clonedContact.id = new Buffer(clonedContact.id, "base64");
+        closestKBucket.add(clonedContact);
     }
-    // convert id from string to Buffer
-    clonedContact.id = new Buffer(clonedContact.id, "base64");
-    closestKBucket.add(clonedContact);
 
     return remoteContact;
 };

@@ -95,6 +95,37 @@ test['add() adds the remote contact to the closest KBucket'] = function (test) {
     test.done();
 };
 
+test['add() replaces local KBucket contact with remote contact if arbiter returns remote contact'] = function (test) {
+    test.expect(3);
+    var fooBase64 = new Buffer("foo").toString("base64");
+
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+
+    var arbiter = function arbiter(incumbent, candidate) {
+        return candidate;
+    };
+    var arbiterDefaults = function arbiterDefaults(contact) {
+        return contact;
+    };
+    var discover = new Discover({
+        arbiter: arbiter,
+        arbiterDefaults: arbiterDefaults,
+        noCache: true,
+        transport: transport
+    });
+    discover.register({id: fooBase64, data: "foo"});
+    discover.add({id: fooBase64, data: "updated"});
+    discover.find(fooBase64, function (error, contact) {
+        test.ok(!error);
+        test.equal(contact.id, fooBase64);
+        test.equal(contact.data, "updated");
+    });
+    test.done();
+};
+
 test['add() returns the contact on successful add'] = function (test) {
     test.expect(1);
     var fooBase64 = new Buffer("foo").toString("base64");
