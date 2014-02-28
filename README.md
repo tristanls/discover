@@ -116,6 +116,77 @@ This would tell us that we can access the actor using the published webkey at IP
 
 Uses of `contact.data` that are not "minimal" in this way can result in poor system behavior.
 
+### arbiter function and arbiter defaults
+
+Discover implements a conflict resolution mechanism using an `arbiter` function. The purpose of the `arbiter` is to choose between two `contact` objects with the same `id` but perhaps different properties and determine which one should be stored.  As the `arbiter` function returns the actual object to be stored, it does not need to make an either/or choice, but instead could perform some sort of operation and return the result as a new object that would then be stored. `arbiterDefaults` function makes sure that `contact` has the appropriate defualt properties for the `arbiter` function to work correctly. See documentation of `arbiter` and `arbiterDefaults` options in [new Discover(options)](#new-discoveroptions) for detailed semantics of when an `arbiter` is used and which `contact` (`incumbent` or `candidate`) is selected.
+
+`arbiter` function is used in three places. First, it is used as the k-bucket `arbiter` function. Second, it is used to determine whether a new remote contact should be inserted into the LRU cache (if `arbiter` returns something `!==` to the cached contact the remote contact will be inserted). Third, it is used to determine if unregistering a contact will succeed (if `arbiter` returns contact `===` to the stored contact and stored contact `!==` contact we want to unregister, then unregister will fail).
+
+For example, an `arbiter` function implementing a `vectorClock` mechanism (the default mechanism) would look something like:
+
+```javascript
+// contact example
+var contact = {
+    id: new Buffer('contactId'),
+    vectorClock: 0
+};
+
+function arbiterDefaults(contact) {
+    if (!contact.vectorClock) {
+        contact.vectorClock = 0;
+    }
+    return contact;
+};
+
+function arbiter(incumbent, candidate) {
+    if (!incumbent
+        || (incumbent && !incumbent.vectorClock)
+        || (incumbent && incumbent.vectorClock && candidate.vectorClock
+            && (candidate.vectorClock >= incumbent.vectorClock))) {
+
+        return candidate;
+    }
+    return incumbent;
+};
+```
+
+Alternatively, consider an arbiter that implements a Grow-Only-Set CRDT mechanism:
+
+```javascript
+// contact example
+var contact = {
+    id: new Buffer('workerService'),
+    workerNodes: {
+        '17asdaf7effa2': { host: '127.0.0.1', port: 1337 },
+        '17djsyqeryasu': { host: '127.0.0.1', port: 1338 }
+    }
+};
+
+function arbiterDefaults(contact) {
+    if (!contact.workerNodes) {
+        contact.workerNodes = {};
+    }
+    return contact;
+};
+
+function arbiter(incumbent, candidate) {
+    // we create a new object so that our selection is guaranteed to replace
+    // the incumbent
+    var merged = {
+        id: incumbent.id, // incumbent.id === candidate.id within an arbiter
+        workerNodes: incumbent.workerNodes
+    };
+
+    Object.keys(candidate.workerNodes).forEach(function (workerNodeId) {
+        merged.workerNodes[workerNodeId] = candidate.workerNodes[workerNodeId];
+    });
+
+    return merged;
+}
+```
+
+Notice that in the above case, the Grow-Only-Set assumes that each worker node has a globally unique id.
+
 ### Technical Origin Details
 
 Discover is implemented using a stripped down version of the Kademlia Distributed Hash Table (DHT). It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
@@ -156,6 +227,8 @@ _For more detailed documentation including private methods see [Discover doc](do
 
   * `options`:
     * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent FIND-NODE requests to the network per `find` request.
+    * `arbiter`: _Function_ _(Default: vector clock arbiter)_ `function (incumbent, candidate) {}` An optional arbiter function. `arbiter` function is used in three places. First, it is used as the k-bucket `arbiter` function. Second, it is used to determine whether a new remote contact should be inserted into the LRU cache (if `arbiter` returns something `!==` to the cached contact the remote contact will be inserted). Third, it is used to determine if unregistering a contact will succeed (if `arbiter` returns contact `===` to the stored contact, unregister will fail).
+    * `arbiterDefaults`: _Function_ _(Default: vector clock arbiter defaults)_ `function (contact) {}` An optional arbiter defaults function that sets `contact` arbiter defaults when a `contact` is first registered. Remote contacts that are added via `add` are assumed to have appropriate arbiter properties already set.
     * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will emit `~trace` events for debugging purposes.
     * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will log to console `~trace` messages for debugging purposes.
     * `maxCacheSize`: _Number_ _(Default: 1000)_ Maximum number of `contacts` to keep in non-kBucket cache (see #6)
@@ -172,8 +245,7 @@ The `seeds` are necessary if joining an existing Discover cluster. Discover will
   * `remoteContact`: _Object_ Contact object to add that is not managed by this Discover node.
     * `id`: _String (base64)_ The contact id, base64 encoded.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Contact that was added with `vectorClock` generated if necessary.
+  * Return: _Object_ Contact that was added.
 
 Adds the `remoteContact`. This is different from `discover.register(contact)` in that adding a `remoteContact` means that the `remoteContact` _is not_ managed by this Discover node.
 
@@ -205,18 +277,16 @@ discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) 
 ### discover.register(contact)
 
   * `contact`: _Object_ Contact object to register.
-    * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64')`)_ The contact id, base 64 encoded; will be created if not present.
-    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
+    * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ The contact id, base 64 encoded; will be created if not present.
+    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`.
+  * Return: _Object_ Contact that was registered with `id` and generated arbiter defaults if necessary.
 
 Registers a new node on the network with `contact.id`. Returns a `contact`:
 
 ```javascript
 discover.register({
     id: 'Zm9v', // base64 encoded String representing nodeId
-    data: 'foo',
-    vectorClock: 0  // vector clock paired with the nodeId
+    data: 'foo'
 });
 ```
 
@@ -226,7 +296,6 @@ _NOTE: Current implementation creates a new k-bucket for every registered node i
 
   * `contact`: _Object_ Contact object to report unreachable
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to report unreachable.
 
 Reports the `contact` as unreachable in case Discover is storing outdated information. This can happen because Discover is a local cache of the global state of the network. If a change occurs, it may not immediately propagate to the local Discover instance.
 
@@ -248,9 +317,8 @@ discover.find("Zm9v", function (error, contact) {
 
   * `contact`: _Object_ Contact object to register
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
-Unregisters previously registered `contact` (identified by `contact.id` and `contact.vectorClock`) from the network.
+Unregisters previously registered `contact` (if `arbiter` returns `contact` and not other stored value) from the network.
 
 #### Event: `stats.timers.find.ms`
 

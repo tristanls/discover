@@ -41,6 +41,20 @@ var clone = require('clone'),
   * `options`:
     * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent 
             FIND-NODE requests to the network per `find` request.
+    * `arbiter`: _Function_ _(Default: vector clock arbiter)_
+            `function (incumbent, candidate) {}` An optional arbiter function.
+            `arbiter` function is used in three places. First, it is used as the
+            k-bucket `arbiter` function. Second, it is used to determine whether
+            a new remote contact should be inserted into the LRU cache (if
+            `arbiter` returns something `!==` to the cached contact the remote
+            contact will be inserted). Third, it is used to determine if
+            unregistering a contact will succeed (if `arbiter` returns contact
+            `===` to the stored contact, unregister will fail).
+    * `arbiterDefaults`: _Function_ _(Default: vector clock arbiter defaults)_
+            `function (contact) {}` An optional arbiter defaults function that
+            sets `contact` arbiter defaults when a `contact` is first registered.
+            Remote contacts that are added via `add` are assumed to have
+            appropriate arbiter properties already set.
     * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will 
             emit `~trace` events for debugging purposes.
     * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover 
@@ -67,6 +81,25 @@ var Discover = module.exports = function Discover (options) {
     self.CONCURRENCY_CONSTANT = options.CONCURRENCY_CONSTANT || 3;
     self.maxCacheSize = options.maxCacheSize || 1000;
     self.noCache = options.noCache === undefined ? false : options.noCache;
+
+    self.arbiterDefaults = options.arbiterDefaults || function arbiterDefaults(contact) {
+        if (!contact.vectorClock) {
+            contact.vectorClock = 0;
+        }
+        return contact;
+    };
+
+    self.arbiter = options.arbiter || function arbiter(incumbent, candidate) {
+        if (!incumbent
+            || (incumbent && !incumbent.vectorClock)
+            || (incumbent && incumbent.vectorClock && candidate.vectorClock
+                && (candidate.vectorClock >= incumbent.vectorClock))) {
+
+            return candidate;
+        }
+        return incumbent;
+    };
+
     self.seeds = options.seeds || [];
     // configure tracing for debugging purposes
     // TODO: probably change this to some sort of sane logging
@@ -239,9 +272,7 @@ util.inherits(Discover, events.EventEmitter);
     * `id`: _String (base64)_ The contact id, base64 encoded.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be
         returned for anyone querying for this `contact` by `id`.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Contact that was added with `vectorClock` generated if
-      necessary.
+  * Return: _Object_ Contact that was added.
 */
 Discover.prototype.add = function add (remoteContact) {
     var self = this;
@@ -251,13 +282,10 @@ Discover.prototype.add = function add (remoteContact) {
     }
 
     // even if we don't have kBuckets to update, we can still store information
-    // in LRU cache (check vectorClock field to update cache with latest only)
+    // in LRU cache (check using arbiter to update cache with latest only)
     var cached = self.lruCache.get(remoteContact.id);
-    if (!cached
-        || (cached && !cached.vectorClock)
-        || (cached && cached.vectorClock && remoteContact.vectorClock
-            && (remoteContact.vectorClock >= cached.vectorClock))) {
-
+    var selection = self.arbiter(cached, remoteContact);
+    if (selection !== cached) {
         self.lruCache.set(remoteContact.id, remoteContact);
     }
 
@@ -372,10 +400,10 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                         return;
                     }
 
-                    kBucket.remove({
-                        id: new Buffer(contactRecord.id, 'base64'),
-                        vectorClock: contactRecord.vectorClock
-                    });
+                    var contactRecordToRemove = clone(contactRecord);
+                    contactRecordToRemove.id =
+                        new Buffer(contactRecord.id, 'base64');
+                    kBucket.remove(contactRecordToRemove);
                 }
                 
                 contactRecord.contacted = true;
@@ -762,10 +790,9 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
     * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ 
             The contact id, base 64 encoded; will be created if not present.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be 
-            returned for anyone querying for this `contact` by `id`  
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Contact that was registered with `id` and `vectorClock` 
-          generated if necessary.
+            returned for anyone querying for this `contact` by `id`.
+  * Return: _Object_ Contact that was registered with `id` and generated arbiter
+      defaults if necessary.
 */
 Discover.prototype.register = function register (contact) {
     var self = this;
@@ -779,15 +806,14 @@ Discover.prototype.register = function register (contact) {
     // add transport information to the stored contact
     contact = self.transport.setTransportInfo(contact);
 
-    if (!contact.vectorClock)
-        contact.vectorClock = 0;
+    contact = self.arbiterDefaults(contact);
 
     var traceHeader = "register(" + contact.id + "): ";
 
     if (!self.kBuckets[contact.id]) {
         if (self.tracing)
             self.trace(traceHeader + 'creating new bucket for ' + util.inspect(contact));
-        var kBucket = new KBucket({localNodeId: contact.id});
+        var kBucket = new KBucket({arbiter: self.arbiter, localNodeId: contact.id});
         kBucket.on('ping', function (oldContacts, newContact) {
             // ping all the old contacts and if one does not respond, remove it
             var oldContactIdsBase64 = [];
@@ -892,8 +918,6 @@ Discover.prototype.trace = function(message) {
   * `contact`: _Object_ Contact object to report unreachable
     * `id`: _String (base64)_ The previously registered contact id, base64 
             encoded.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to report 
-            unreachable.
 */
 Discover.prototype.unreachable = function unreachable (contact) {
     var self = this;
@@ -928,16 +952,16 @@ Discover.prototype.unreachable = function unreachable (contact) {
   * `contact`: _Object_ Contact object to register
     * `id`: _String (base64)_ The previously registered contact id, base 64 
             encoded.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to 
-            unregister.
 */
 Discover.prototype.unregister = function unregister (contact) {
     var self = this;
     var kBucket = self.kBuckets[contact.id];
     if (kBucket) {
-        // vectorClock check
-        if (kBucket.contact.vectorClock && contact.vectorClock
-            && kBucket.contact.vectorClock > contact.vectorClock) {
+        if (kBucket.contact === self.arbiter(kBucket.contact, contact)
+            && kBucket.contact !== contact) {
+            // by returning the stored contact, arbiter determined that
+            // unregister should fail as an attempt to unregister using
+            // old data has been made
             return;
         }
         delete self.kBuckets[contact.id];
