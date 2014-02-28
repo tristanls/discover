@@ -8,7 +8,7 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 ## Contributors
 
-[@tristanls](https://github.com/tristanls), [@mikedeboer](https://github.com/mikedeboer)
+[@tristanls](https://github.com/tristanls), [@mikedeboer](https://github.com/mikedeboer), [@skeggse](https://github.com/skeggse)
 
 ## Contents
 
