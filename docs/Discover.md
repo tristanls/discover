@@ -26,6 +26,8 @@ Node ids in Discover are represented as base64 encoded Strings. This is because 
 
   * `options`:
     * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent FIND-NODE requests to the network per `find` request.
+    * `arbiter`: _Function_ _(Default: vector clock arbiter)_ `function (incumbent, candidate) {}` An optional arbiter function. `arbiter` function is used in three places. First, it is used as the k-bucket `arbiter` function. Second, it is used to determine whether a new remote contact should be inserted into the LRU cache (if `arbiter` returns something `!==` to the cached contact the remote contact will be inserted). Third, it is used to determine if unregistering a contact will succeed (if `arbiter` returns contact `===` to the stored contact, unregister will fail).
+    * `arbiterDefaults`: _Function_ _(Default: vector clock arbiter defaults)_ `function (contact) {}` An optional arbiter defaults function that sets `contact` arbiter defaults when a `contact` is first registered. Remote contacts that are added via `add` are assumed to have appropriate arbiter properties already set.
     * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will emit `~trace` events for debugging purposes.
     * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will log to console `~trace` messages for debugging purposes.
     * `maxCacheSize`: _Number_ _(Default: 1000)_ Maximum number of `contacts` to keep in non-kBucket cache (see #6)
@@ -42,8 +44,7 @@ The `seeds` are necessary if joining an existing Discover cluster. Discover will
   * `remoteContact`: _Object_ Contact object to add that is not managed by this Discover node.
     * `id`: _String (base64)_ The contact id, base64 encoded.
     * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Contact that was added with `vectorClock` generated if necessary.
+  * Return: _Object_ Contact that was added.
 
 Adds the `remoteContact`. This is different from `discover.register(contact)` in that adding a `remoteContact` means that the `remoteContact` _is not_ managed by this Discover node.
 
@@ -133,22 +134,15 @@ Checks if query completion criteria are met. If there are any new nodes to add t
 
   * `contact`: _Object_ Contact object to register.
     * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ The contact id, base 64 encoded; will be created if not present.
-    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`
-    * `transport`: _Any_ _(Required for seeds only)_ Any data that the transport mechanism requires for operation.     
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock to pair with node id.
-  * Return: _Object_ Contact that was registered with `id` and `vectorClock` generated if necessary.
+    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be returned for anyone querying for this `contact` by `id`.
+  * Return: _Object_ Contact that was registered with `id` and generated arbiter defaults if necessary.
 
 Registers a new node on the network with `contact.id`. Returns a `contact`:
 
 ```javascript
 discover.register({
     id: 'Zm9v', // base64 encoded String representing nodeId
-    data: 'foo',
-    transport: {
-        host: "foo.bar.com", // or "localhost", "127.0.0.1", etc...
-        port: 6742
-    },
-    vectorClock: 0  // vector clock paired with the nodeId
+    data: 'foo'
 });
 ```
 
@@ -183,7 +177,6 @@ Logs or emits a `~trace` for debugging purposes.
 
   * `contact`: _Object_ Contact object to report unreachable
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to report unreachable.
 
 Reports the `contact` as unreachable in case Discover is storing outdated information. This can happen because Discover is a local cache of the global state of the network. If a change occurs, it may not immediately propagate to the local Discover instance.
 
@@ -205,9 +198,8 @@ discover.find("Zm9v", function (error, contact) {
 
   * `contact`: _Object_ Contact object to register
     * `id`: _String (base64)_ The previously registered contact id, base 64 encoded.
-    * `vectorClock`: _Integer_ _(Default: 0)_ Vector clock of contact to unregister.
 
-Unregisters previously registered `contact` (identified by `contact.id` and `contact.vectorClock`) from the network.
+Unregisters previously registered `contact` (if `arbiter` returns `contact` and not other stored value) from the network.
 
 #### Event: `stats.timers.find.ms`
 
