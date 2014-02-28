@@ -143,26 +143,32 @@ var Discover = module.exports = function Discover (options) {
         var closestKBuckets = self.getClosestKBuckets(nodeId);
         var closestContacts = self.getClosestContacts(nodeId, closestKBuckets);
 
-        // add the sender
-        // we do it only after we already got the closest contact to prevent
-        // always responding with exact match to the sender if the sender is
-        // announcing (searching for itself)
-        var senderClosestKBuckets = self.getClosestKBuckets(sender.id);
-        if (senderClosestKBuckets.length == 0) {
-            if (self.tracing)
-                self.trace('no kBuckets for findNode sender ' + util.inspect(sender));
-        } else {
-            var senderClosestKBucketId = senderClosestKBuckets[0].id;
-            var senderClosestKBucket = self.kBuckets[senderClosestKBucketId].kBucket;
-            if (!senderClosestKBucket) {
+        // add the sender if it exists
+        if (sender) {
+            // we do it only after we already got the closest contact to prevent
+            // always responding with exact match to the sender if the sender is
+            // announcing (searching for itself)
+            var senderClosestKBuckets = self.getClosestKBuckets(sender.id);
+            if (senderClosestKBuckets.length == 0) {
                 if (self.tracing)
-                    self.trace('no closest kBucket for findNode sender ' + util.inspect(sender));
+                    self.trace('no kBuckets for findNode sender '
+                        + util.inspect(sender));
             } else {
-                var clonedSender = clone(sender);
-                if (self.tracing)
-                    self.trace('adding ' + util.inspect(clonedSender) + ' to kBucket ' + senderClosestKBucketId);
-                clonedSender.id = new Buffer(clonedSender.id, "base64");
-                senderClosestKBucket.add(clonedSender);
+                var senderClosestKBucketId = senderClosestKBuckets[0].id;
+                var senderClosestKBucket =
+                    self.kBuckets[senderClosestKBucketId].kBucket;
+                if (!senderClosestKBucket) {
+                    if (self.tracing)
+                        self.trace('no closest kBucket for findNode sender '
+                            + util.inspect(sender));
+                } else {
+                    var clonedSender = clone(sender);
+                    if (self.tracing)
+                        self.trace('adding ' + util.inspect(clonedSender)
+                            + ' to kBucket ' + senderClosestKBucketId);
+                    clonedSender.id = new Buffer(clonedSender.id, "base64");
+                    senderClosestKBucket.add(clonedSender);
+                }
             }
         }
 

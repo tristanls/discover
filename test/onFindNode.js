@@ -44,7 +44,27 @@ test["on 'findNode' returns the contact with id and data if node is one of regis
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
-    };    
+    };
+    var discover = new Discover({
+        transport: transport
+    });
+    discover.register({id: fooBase64});
+    transport.emit('findNode', fooBase64, sender, function (error, contact) {
+        test.ok(!error);
+        test.deepEqual(contact, {id: fooBase64, vectorClock: 0});
+        test.done();
+    });
+};
+
+test["on 'findNode' returns the contact with id and data if node is one of registered nodes and sender is undefined"] = function (test) {
+    test.expect(2);
+    var fooBase64 = new Buffer("foo").toString("base64");
+
+    var sender = undefined;
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
     var discover = new Discover({
         transport: transport
     });
@@ -65,7 +85,31 @@ test["on 'findNode' returns the contact with id and data if node has been 'reach
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
-    };    
+    };
+    transport.findNode = function () {
+        test.fail("used transport.findNode()");
+    };
+    var discover = new Discover({transport: transport});
+    discover.register({id: fooBase64});
+    transport.emit('reached', {id: barBase64});
+    // "bar" should now be in "foo" kBucket
+    transport.emit('findNode', barBase64, sender, function (error, contact) {
+        test.ok(!error);
+        test.equal(contact.id, barBase64);
+        test.done();
+    });
+};
+
+test["on 'findNode' returns the contact with id and data if node has been 'reached' and sender is undefined"] = function (test) {
+    test.expect(2);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+
+    var sender = undefined;
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
     transport.findNode = function () {
         test.fail("used transport.findNode()");
     };
@@ -93,7 +137,35 @@ test["on 'findNode' returns closest nodes if node is not one of registered nodes
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
-    };    
+    };
+    var discover = new Discover({
+        transport: transport
+    });
+    discover.register({id: fooBase64});
+    transport.emit('reached', {id: basBase64});
+    transport.emit('reached', {id: bazBase64});
+    // "bas" and "baz" should now be in "foo" kBucket
+    transport.emit('findNode', barBase64, sender, function (error, contacts) {
+        test.ok(!error);
+        test.deepEqual(contacts, [{id: basBase64}, {id: bazBase64}]);
+        test.done();
+    });
+};
+
+test["on 'findNode' returns closest nodes if node is not one of registered nodes and sender is undefined"] = function (test) {
+    test.expect(2);
+    // this test has one kBucket for registered nodeId "bar"
+    // within this kBucket is two nodes closer to "bar" than "foo": "bas", "baz"
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var basBase64 = new Buffer("bas").toString("base64");
+    var bazBase64 = new Buffer("baz").toString("base64");
+
+    var sender = undefined;
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
     var discover = new Discover({
         transport: transport
     });
@@ -118,7 +190,7 @@ test["on 'findNode' adds the sender to the closest KBucket to the sender"] = fun
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
-    };    
+    };
     var discover = new Discover({
         // inlineTrace: true,
         transport: transport
