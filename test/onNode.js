@@ -4,7 +4,7 @@ onNode.js - transport.emit('node', ...) test
 
 The MIT License (MIT)
 
-Copyright (c) 2013 Tristan Slominski
+Copyright (c) 2013-2014 Tristan Slominski
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -51,7 +51,7 @@ test["on 'node' adds the reached contact to the closest KBucket"] = function (te
     var transport = new events.EventEmitter();
     transport.setTransportInfo = function (contact) {
         return contact;
-    };    
+    };
     var discover = new Discover({
         noCache: true,
         transport: transport
@@ -77,6 +77,53 @@ test["on 'node' adds the reached contact to the closest KBucket"] = function (te
     discover.find(barBase64, function (error, contact) {
         test.ok(!error);
         test.deepEqual(contact, {id: barBase64});
+    });
+    done();
+};
+
+test["on 'node' adds the reached contact as the local KBucket contact if id matches a local KBucket and arbiter returns candidate"] = function (test) {
+    test.expect(5);
+    var fooBase64 = new Buffer("foo").toString("base64");
+
+    var arbiter = function arbiter(incumbent, candidate) {
+        return candidate;
+    };
+    var arbiterDefaults = function arbiterDefaults(contact) {
+        return contact;
+    };
+
+    var transport = new events.EventEmitter();
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    var discover = new Discover({
+        arbiter: arbiter,
+        arbiterDefaults: arbiterDefaults,
+        // inlineTrace: true,
+        noCache: true,
+        transport: transport
+    });
+    discover.register({id: fooBase64, data: "foo"});
+
+    var done = expectDone(test, 3);
+
+    discover.on('stats.timers.find.ms', function (latency) {
+        test.ok(true); // 1
+        done();
+    });
+    discover.on('stats.timers.find.request.ms', function (latency) {
+        test.equal(latency, 0); // 1
+        done();
+    });
+    discover.on('stats.timers.find.round.ms', function (latency) {
+        test.ok(false, 'stats.timers.find.round.ms should not be called');
+    });
+
+    transport.emit('node', null, {id: fooBase64, data: "updated"});
+    discover.find(fooBase64, function (error, contact) {
+        test.ok(!error);
+        test.equal(contact.id, fooBase64);
+        test.equal(contact.data, "updated");
     });
     done();
 };
