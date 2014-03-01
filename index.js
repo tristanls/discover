@@ -39,7 +39,7 @@ var clone = require('clone'),
 
 /*
   * `options`:
-    * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent 
+    * `CONCURRENCY_CONSTANT`: _Integer_ _(Default: 3)_ Number of concurrent
             FIND-NODE requests to the network per `find` request.
     * `arbiter`: _Function_ _(Default: vector clock arbiter)_
             `function (incumbent, candidate) {}` An optional arbiter function.
@@ -55,21 +55,21 @@ var clone = require('clone'),
             sets `contact` arbiter defaults when a `contact` is first registered.
             Remote contacts that are added via `add` are assumed to have
             appropriate arbiter properties already set.
-    * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will 
+    * `eventTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover will
             emit `~trace` events for debugging purposes.
-    * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover 
+    * `inlineTrace`: _Boolean_ _(Default: false)_ If set to `true`, Discover
             will log to console `~trace` messages for debugging purposes.
     * `maxCacheSize`: _Number_ _(Default: 1000)_ Maximum number of `contacts` to
             keep in non-kBucket cache (see #6)
     * `noCache`: _Boolean_ _(Default: false)_ If `true`, non-kBucket cache is not
             used.
-    * `seeds`: _Array_ _(Default: [])_ An array of seed `contact` Objects that 
+    * `seeds`: _Array_ _(Default: [])_ An array of seed `contact` Objects that
             the `transport` understands.
-    * `transport`: _Object_ _(Default: `discover-tcp-transport`)_ An optional 
-            initialized and ready to use transport module for sending 
-            communications that conforms to the Transport Protocol. 
-            If `transport` is not provided, a new instance of 
-            `discover-tcp-transport` will be created and used with default 
+    * `transport`: _Object_ _(Default: `discover-tcp-transport`)_ An optional
+            initialized and ready to use transport module for sending
+            communications that conforms to the Transport Protocol.
+            If `transport` is not provided, a new instance of
+            `discover-tcp-transport` will be created and used with default
             settings.
 */
 var Discover = module.exports = function Discover (options) {
@@ -116,7 +116,7 @@ var Discover = module.exports = function Discover (options) {
         self.transport = new TcpTransport(options);
     }
 
-    // register a listener to update our k-buckets with nodes that we manage 
+    // register a listener to update our k-buckets with nodes that we manage
     // contact with
     self.transport.on('node', function (error, contact, nodeId, response) {
         var latency = self.timerEndInMilliseconds('find.request.ms', contact.id + nodeId);
@@ -183,7 +183,7 @@ var Discover = module.exports = function Discover (options) {
 
         // check if we already responded prior to processing the sender
         if (localContactKBucket)
-            return; 
+            return;
 
         if (closestContacts.length == 0) {
             return callback(null, []);
@@ -195,7 +195,7 @@ var Discover = module.exports = function Discover (options) {
             contact.id = contact.id.toString("base64");
             return callback(null, contact);
         }
-        
+
         // return closest contacts
         var contacts = [];
         closestContacts.forEach(function (closeContact) {
@@ -243,7 +243,7 @@ var Discover = module.exports = function Discover (options) {
         if (localContactKBucket) {
             callback(null, localContactKBucket.contact);
         } else {
-            // the nodeId is not one of the locally registered nodes, ping fail 
+            // the nodeId is not one of the locally registered nodes, ping fail
             callback(true);
         }
     });
@@ -378,7 +378,7 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
     // we listen for `node` events that contain the nodeId we asked for
     // this helps to decouple discover from the transport and allows us to
     // benefit from other ongoing queries (TODO: "prove" this)
-    // 
+    //
     // because executeQuery can be called multiple times on the same query,
     // we keep the state
     if (!query.listener) {
@@ -403,11 +403,11 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
 
             if (error) {
                 if (self.tracing) {
-                    self.trace('error response from ' + util.inspect(contact) + 
+                    self.trace('error response from ' + util.inspect(contact) +
                         ' looking for ' + nodeId + ': ' + util.inspect(error));
                 }
                 var contactRecord = query.nodesMap[contact.id];
-    
+
                 if (!contactRecord)
                     return;
 
@@ -429,7 +429,7 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                         new Buffer(contactRecord.id, 'base64');
                     kBucket.remove(contactRecordToRemove);
                 }
-                
+
                 contactRecord.contacted = true;
 
                 // console.dir(query);
@@ -449,7 +449,7 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
             // we have a response, it could be an Object or Array
 
             if (self.tracing) {
-                self.trace('response from ' + util.inspect(contact) + 
+                self.trace('response from ' + util.inspect(contact) +
                     ' looking for ' + nodeId + ': ' + util.inspect(response));
             }
             if (Array.isArray(response)) {
@@ -469,17 +469,17 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                 return;
             }
 
-            // we have a response Object, found the contact! 
+            // we have a response Object, found the contact!
             // add the new contact to the closestKBucket
             var finalClosestKBuckets = self.getClosestKBuckets(response.id);
             if (finalClosestKBuckets.length > 0) {
-                var finalClosestKBucket = 
+                var finalClosestKBucket =
                     self.kBuckets[finalClosestKBuckets[0].id].kBucket;
                 var contact = clone(response);
                 contact.id = new Buffer(contact.id, "base64");
                 finalClosestKBucket.add(contact);
             }
-            
+
             // return the response and stop querying
             var latency = self.timerEndInMilliseconds('find.ms', nodeId);
             var roundLatency = self.timerEndInMilliseconds('find.round.ms', nodeId);
@@ -493,9 +493,9 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
         self.transport.on('node', query.listener);
     }
 
-    for (query.index = query.index || 0; 
+    for (query.index = query.index || 0;
         query.index < query.nodes.length
-            && query.ongoingRequests < self.CONCURRENCY_CONSTANT; 
+            && query.ongoingRequests < self.CONCURRENCY_CONSTANT;
         query.index++) {
 
         query.ongoingRequests++;
@@ -510,13 +510,13 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
 
 /*
   * `nodeId`: _String (base64)_ The node id to find, base64 encoded.
-  * `callback`: _Function_ The callback to call with the result of searching for 
+  * `callback`: _Function_ The callback to call with the result of searching for
           `nodeId`.
-  * `announce`: _Object_ _(Default: undefined)_ _**CAUTION: reserved for 
-          internal use**_ Contact object, if specified, it indicates an 
-          announcement to the network so we ask the network instead of 
-          satisfying request locally and the sender is the `announce` contact 
-          object.  
+  * `announce`: _Object_ _(Default: undefined)_ _**CAUTION: reserved for
+          internal use**_ Contact object, if specified, it indicates an
+          announcement to the network so we ask the network instead of
+          satisfying request locally and the sender is the `announce` contact
+          object.
 */
 Discover.prototype.find = function find (nodeId, callback, announce) {
     var self = this;
@@ -608,10 +608,10 @@ Discover.prototype.find = function find (nodeId, callback, announce) {
 
 /*
   * `nodeId`: _String (base64)_ Base64 encoded node id to find.
-  * `callback`: _Function_ The callback to call with the result of searching for 
+  * `callback`: _Function_ The callback to call with the result of searching for
           `nodeId`.
-  * `announce`: _Object_ _(Default: undefined)_ Contact object, if specified, it 
-          indicates an announcement and the sender is the `announce` contact 
+  * `announce`: _Object_ _(Default: undefined)_ Contact object, if specified, it
+          indicates an announcement and the sender is the `announce` contact
           object.
 */
 Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback, announce) {
@@ -656,9 +656,9 @@ Discover.prototype.findViaSeeds = function findViaSeeds (nodeId, callback, annou
 };
 
 /*
-  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts 
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts
           to.
-  * `closestKBuckets`: _Array_ Sorted array of `KBucket`s from closest to 
+  * `closestKBuckets`: _Array_ Sorted array of `KBucket`s from closest to
           furthest from `nodeId`.
   * Return: _Array_ List of closest contacts.
 */
@@ -689,7 +689,7 @@ Discover.prototype.getClosestContacts = function getClosestContacts (nodeId, clo
 };
 
 /*
-  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts 
+  * `nodeId`: _String (base64)_ Base64 encoded node id to find closest contacts
           to.
   * Return: _Array_ List of closest `KBucket`s.
 */
@@ -727,7 +727,7 @@ Discover.prototype.getClosestKBuckets = function getClosestKBuckets (nodeId) {
             furthest.
       * `node`:
         * `id`: _String (base64)_ Base64 encoded contact id.
-    * `nodesMap`: _Object_ A map to the same `contact`s already present in 
+    * `nodesMap`: _Object_ A map to the same `contact`s already present in
             `nodes` for O(1) access.
   * `callback`: _Function_ The callback to call with result.
 */
@@ -742,7 +742,7 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
         // stop
         self.emit('stats.timers.find.round.ms',
             self.timerEndInMilliseconds('find.round.ms', query.nodeId));
-        
+
         // console.log('sorting new nodes');
         // sort the new nodes according to distance
         var newNodes = [];
@@ -801,7 +801,7 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
         });
         query.closest = query.nodes[0];
         query.newNodes = [];
-        
+
         return process.nextTick(function () {
             self.executeQuery(query, callback);
         });
@@ -811,9 +811,9 @@ Discover.prototype.queryCompletionCheck = function queryCompletionCheck (query, 
 
 /*
   * `contact`: _Object_ Contact object to register.
-    * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_ 
+    * `id`: _String (base64)_ _(Default: `crypto.randomBytes(20).toString('base64'`)_
             The contact id, base 64 encoded; will be created if not present.
-    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be 
+    * `data`: _Any_ Data to be included with the contact, it is guaranteed to be
             returned for anyone querying for this `contact` by `id`.
   * Return: _Object_ Contact that was registered with `id` and generated arbiter
       defaults if necessary.
@@ -822,7 +822,7 @@ Discover.prototype.register = function register (contact) {
     var self = this;
     contact = contact || {};
     contact = clone(contact); // separate references from outside
-    
+
     if (!contact.id) {
         contact.id = crypto.randomBytes(20).toString('base64');
     }
@@ -940,7 +940,7 @@ Discover.prototype.trace = function(message) {
 
 /*
   * `contact`: _Object_ Contact object to report unreachable
-    * `id`: _String (base64)_ The previously registered contact id, base64 
+    * `id`: _String (base64)_ The previously registered contact id, base64
             encoded.
 */
 Discover.prototype.unreachable = function unreachable (contact) {
@@ -974,7 +974,7 @@ Discover.prototype.unreachable = function unreachable (contact) {
 
 /*
   * `contact`: _Object_ Contact object to register
-    * `id`: _String (base64)_ The previously registered contact id, base 64 
+    * `id`: _String (base64)_ The previously registered contact id, base 64
             encoded.
 */
 Discover.prototype.unregister = function unregister (contact) {
