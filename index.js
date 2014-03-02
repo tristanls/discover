@@ -125,6 +125,22 @@ var Discover = module.exports = function Discover (options) {
             return; // failed contact
         }
 
+        if (Array.isArray(response)) {
+            // arbiter "closer" responses against locally registered contacts
+            response.forEach(function (res) {
+                if (self.kBuckets[res.id]) {
+                    self.kBuckets[res.id].contact =
+                        self.arbiter(self.kBuckets[res.id].contact, res);
+                }
+            });
+        } else if (response && response.id) {
+            // arbiter exact match response against locally registered contacts
+            if (self.kBuckets[response.id]) {
+                self.kBuckets[response.id].contact =
+                    self.arbiter(self.kBuckets[response.id].contact, response);
+            }
+        }
+
         // we successfully contacted the "contact", add it
         self.add(contact);
         self.emit('stats.timers.find.request.ms', latency);
@@ -456,14 +472,6 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                 // add the closest contacts to new nodes
                 query.newNodes = query.newNodes.concat(response);
 
-                // check if any responses are same as locally registered contacts
-                response.forEach(function (contact) {
-                    if (self.kBuckets[contact.id]) {
-                        self.kBuckets[contact.id].contact =
-                            self.arbiter(self.kBuckets[contact.id].contact, contact)
-                    }
-                });
-
                 // TODO: same code inside error handler
                 // initiate next request if there are still queries to be made
                 if (query.index < query.nodes.length
@@ -478,22 +486,14 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
             }
 
             // we have a response Object, found the contact!
-            // first, check if remote contact id is locally registered
-            if (self.kBuckets[response.id]) {
-                // response contact id is same as locally registered contact id
-                // need to arbiter which contact version should be retained
-                self.kBuckets[response.id].contact =
-                    self.arbiter(self.kBuckets[response.id].contact, response);
-            } else {
-                // add the new contact to the closestKBucket
-                var finalClosestKBuckets = self.getClosestKBuckets(response.id);
-                if (finalClosestKBuckets.length > 0) {
-                    var finalClosestKBucket =
-                        self.kBuckets[finalClosestKBuckets[0].id].kBucket;
-                    var contact = clone(response);
-                    contact.id = new Buffer(contact.id, "base64");
-                    finalClosestKBucket.add(contact);
-                }
+            // add the new contact to the closestKBucket
+            var finalClosestKBuckets = self.getClosestKBuckets(response.id);
+            if (finalClosestKBuckets.length > 0) {
+                var finalClosestKBucket =
+                    self.kBuckets[finalClosestKBuckets[0].id].kBucket;
+                var contact = clone(response);
+                contact.id = new Buffer(contact.id, "base64");
+                finalClosestKBucket.add(contact);
             }
 
             // return the response and stop querying
