@@ -150,7 +150,7 @@ function arbiter(incumbent, candidate) {
 };
 ```
 
-_NOTE: `contact.vectorClock` is not guaranteed to be passed by the transport. This is a known bug. See #9 for updates._
+_NOTE: `contact.vectorClock` is not guaranteed to be passed by the transport. This is a known bug. See [#9](https://github.com/tristanls/discover/issues/9) for updates._
 
 Alternatively, consider an arbiter that implements a Grow-Only-Set CRDT mechanism:
 
@@ -521,7 +521,7 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 
 This is roughly in order of current priority:
 
-  * **Update Transport Interface**: The transport interface should probably guarantee immutability and pass through of `contact.arbiter` property (much like it does right now for `contact.id` and `contact.data`). See #9 for more details.
+  * **Update Transport Interface**: The transport interface should probably guarantee immutability and pass through of `contact.arbiter` property (much like it does right now for `contact.id` and `contact.data`). See [#9](https://github.com/tristanls/discover/issues/9) for more details.
   * **Implementation Correctness**: Gain confidence that the protocol functions as expected. This should involve running a lot of nodes and measuring information distribution latency and accuracy.
   * **TLS Transport** _(separate module)_ or it might make sense to change the TCP Transport into Net Transport and include within both TCP and TLS.
   * **UDP Transport** _(separate module)_
