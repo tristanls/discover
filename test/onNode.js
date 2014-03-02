@@ -165,3 +165,60 @@ test["on 'node' adds the response as the local KBucket contact if id matches a l
     test.equal(contact.data, "updated");
     test.done();
 };
+
+test["on 'node' adds the responses as the local KBucket contacts if id matches a local KBucket and arbiter returns candidate"] = function (test) {
+    test.expect(6);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBase64 = new Buffer("bar").toString("base64");
+    var bazBase64 = new Buffer("baz").toString("base64");
+    var basBase64 = new Buffer("bas").toString("base64");
+
+    var arbiter = function arbiter(incumbent, candidate) {
+        return candidate;
+    };
+    var arbiterDefaults = function arbiterDefaults(contact) {
+        return contact;
+    };
+
+    var sender = {id: fooBase64, data: 'updated'};
+    var responses = [
+        {id: barBase64, data: 'updated'},
+        {id: bazBase64, data: 'updated'},
+        {id: basBase64, data: 'updated'}
+    ];
+
+    var transport = new events.EventEmitter();
+    transport.findNode = function () {};
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    var discover = new Discover({
+        arbiter: arbiter,
+        arbiterDefaults: arbiterDefaults,
+        // inlineTrace: true,
+        seeds: [
+            {id: fooBase64, transport: {}}
+        ],
+        transport: transport
+    });
+
+    discover.register({id: barBase64, data: 'bar'});
+    discover.register({id: bazBase64, data: 'baz'});
+    discover.register({id: basBase64, data: 'bas'});
+
+    transport.emit('node', null, sender, barBase64, responses);
+
+    var barContact = discover.kBuckets[barBase64].contact;
+    test.equal(barContact.id, barBase64);
+    test.equal(barContact.data, "updated");
+
+    var bazContact = discover.kBuckets[bazBase64].contact;
+    test.equal(bazContact.id, bazBase64);
+    test.equal(bazContact.data, "updated");
+
+    var basContact = discover.kBuckets[basBase64].contact;
+    test.equal(basContact.id, basBase64);
+    test.equal(basContact.data, "updated");
+
+    test.done();
+};

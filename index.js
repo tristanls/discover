@@ -456,6 +456,14 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
                 // add the closest contacts to new nodes
                 query.newNodes = query.newNodes.concat(response);
 
+                // check if any responses are same as locally registered contacts
+                response.forEach(function (contact) {
+                    if (self.kBuckets[contact.id]) {
+                        self.kBuckets[contact.id].contact =
+                            self.arbiter(self.kBuckets[contact.id].contact, contact)
+                    }
+                });
+
                 // TODO: same code inside error handler
                 // initiate next request if there are still queries to be made
                 if (query.index < query.nodes.length
