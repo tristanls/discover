@@ -125,6 +125,18 @@ var Discover = module.exports = function Discover (options) {
             return; // failed contact
         }
 
+        if (Array.isArray(response)) {
+            response.forEach(function(contact) {
+                if (self.kBuckets[contact.id]) {
+                    self.add(contact);
+                }
+            });
+        } else if (contact.id == response.id) {
+            contact = self.arbiter(contact, response);
+        } else if (response.id && self.kBuckets[response.id]) {
+            self.add(response);
+        }
+
         // we successfully contacted the "contact", add it
         self.add(contact);
         self.emit('stats.timers.find.request.ms', latency);
