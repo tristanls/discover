@@ -127,3 +127,41 @@ test["on 'node' adds the reached contact as the local KBucket contact if id matc
     });
     done();
 };
+
+test["on 'node' adds the response as the local KBucket contact if id matches a local KBucket and arbiter returns candidate"] = function (test) {
+    test.expect(2);
+    var fooBase64 = new Buffer("foo").toString("base64");
+    var barBuffer = new Buffer("bar");
+    var barBase64 = barBuffer.toString("base64");
+
+    var arbiter = function arbiter(incumbent, candidate) {
+        return candidate;
+    };
+    var arbiterDefaults = function arbiterDefaults(contact) {
+        return contact;
+    };
+
+    var sender = {id: fooBase64, data: 'updated'};
+    var response = {id: barBase64, data: 'updated'};
+
+    var transport = new events.EventEmitter();
+    transport.findNode = function () {};
+    transport.setTransportInfo = function (contact) {
+        return contact;
+    };
+    var discover = new Discover({
+        arbiter: arbiter,
+        arbiterDefaults: arbiterDefaults,
+        // inlineTrace: true,
+        seeds: [
+            {id: fooBase64, transport: {}}
+        ],
+        transport: transport
+    });
+    discover.register({id: barBase64, data: 'bar'});
+    transport.emit('node', null, sender, barBase64, response);
+    var contact = discover.kBuckets[barBase64].contact;
+    test.equal(contact.id, barBase64);
+    test.equal(contact.data, "updated");
+    test.done();
+};

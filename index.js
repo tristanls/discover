@@ -470,14 +470,22 @@ Discover.prototype.executeQuery = function executeQuery (query, callback) {
             }
 
             // we have a response Object, found the contact!
-            // add the new contact to the closestKBucket
-            var finalClosestKBuckets = self.getClosestKBuckets(response.id);
-            if (finalClosestKBuckets.length > 0) {
-                var finalClosestKBucket =
-                    self.kBuckets[finalClosestKBuckets[0].id].kBucket;
-                var contact = clone(response);
-                contact.id = new Buffer(contact.id, "base64");
-                finalClosestKBucket.add(contact);
+            // first, check if remote contact id is locally registered
+            if (self.kBuckets[response.id]) {
+                // response contact id is same as locally registered contact id
+                // need to arbiter which contact version should be retained
+                self.kBuckets[response.id].contact =
+                    self.arbiter(self.kBuckets[response.id].contact, response);
+            } else {
+                // add the new contact to the closestKBucket
+                var finalClosestKBuckets = self.getClosestKBuckets(response.id);
+                if (finalClosestKBuckets.length > 0) {
+                    var finalClosestKBucket =
+                        self.kBuckets[finalClosestKBuckets[0].id].kBucket;
+                    var contact = clone(response);
+                    contact.id = new Buffer(contact.id, "base64");
+                    finalClosestKBucket.add(contact);
+                }
             }
 
             // return the response and stop querying
