@@ -37,7 +37,7 @@ Discover is a distributed master-less node discovery mechanism that enables loca
 
 ## Overview
 
-Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. It enables point-to-point communications without pre-defined architecture and without a centralized router or centralized messaging. 
+Discover is a distributed master-less node discovery mechanism that enables locating any entity (server, worker, drone, actor) based on node id. It enables point-to-point communications without pre-defined architecture and without a centralized router or centralized messaging.
 
 It is worth highlighting that Discover is _only_ a discovery mechanism. You can find out where a node is located (it's hostname and port, for example), but to communicate with it, you should have a way of doing that yourself.
 
@@ -72,7 +72,7 @@ The transport data is only required for contact's that are _seeds_. That is, the
 
 ### Use of `contact.data`
 
-As explained below in [Technical Origin Details](#technical-origin-details), Discover is intended to implement only PING and FIND-NODE RPCs. This reflects the intent of Discover to be a discovery mechanism and not a data storage/distribution mechanism. It is important to keep that in mind when using `contact.data`. 
+As explained below in [Technical Origin Details](#technical-origin-details), Discover is intended to implement only PING and FIND-NODE RPCs. This reflects the intent of Discover to be a discovery mechanism and not a data storage/distribution mechanism. It is important to keep that in mind when using `contact.data`.
 
 The existence of `contact.data` is to support the discovery mechanism. Given that `contact.transport` contains information for how a Discover transport can connect to another Discover transport, this is not very useful if one is trying to figure out the endpoint address of another node for application level purposes. It may not correspond at all to what's in `contact.transport`. The intended use of `contact.data` is to store a **minimal** amount of information required for connecting to the node endpoint for the application's purpose.
 
@@ -116,9 +116,9 @@ This would tell us that we can access the actor using the published webkey at IP
 
 Uses of `contact.data` that are not "minimal" in this way can result in poor system behavior.
 
-### arbiter function and arbiter defaults
+### Arbiter function and arbiter defaults
 
-Discover implements a conflict resolution mechanism using an `arbiter` function. The purpose of the `arbiter` is to choose between two `contact` objects with the same `id` but perhaps different properties and determine which one should be stored.  As the `arbiter` function returns the actual object to be stored, it does not need to make an either/or choice, but instead could perform some sort of operation and return the result as a new object that would then be stored. `arbiterDefaults` function makes sure that `contact` has the appropriate defualt properties for the `arbiter` function to work correctly. See documentation of `arbiter` and `arbiterDefaults` options in [new Discover(options)](#new-discoveroptions) for detailed semantics of when an `arbiter` is used and which `contact` (`incumbent` or `candidate`) is selected.
+Discover implements a conflict resolution mechanism using an `arbiter` function. The purpose of the `arbiter` is to choose between two `contact` objects with the same `id` but perhaps different properties and determine which one should be stored.  As the `arbiter` function returns the actual object to be stored, it does not need to make an either/or choice, but instead could perform some sort of operation and return the result as a new object that would then be stored. `arbiterDefaults` function makes sure that `contact` has the appropriate defualt properties for the `arbiter` function to work correctly.
 
 `arbiter` function is used in three places. First, it is used as the k-bucket `arbiter` function. Second, it is used to determine whether a new remote contact should be inserted into the LRU cache (if `arbiter` returns something `!==` to the cached contact the remote contact will be inserted). Third, it is used to determine if unregistering a contact will succeed (if `arbiter` returns contact `===` to the stored contact and stored contact `!==` contact we want to unregister, then unregister will fail).
 
@@ -150,48 +150,66 @@ function arbiter(incumbent, candidate) {
 };
 ```
 
+_NOTE: `contact.vectorClock` is not guaranteed to be passed by the transport. This is a known bug. See #9 for updates._
+
 Alternatively, consider an arbiter that implements a Grow-Only-Set CRDT mechanism:
 
 ```javascript
 // contact example
 var contact = {
     id: new Buffer('workerService'),
-    workerNodes: {
-        '17asdaf7effa2': { host: '127.0.0.1', port: 1337 },
-        '17djsyqeryasu': { host: '127.0.0.1', port: 1338 }
+    data: {
+        workerNodes: {
+            '17asdaf7effa2': { host: '127.0.0.1', port: 1337 },
+            '17djsyqeryasu': { host: '127.0.0.1', port: 1338 }
+        }
     }
 };
 
 function arbiterDefaults(contact) {
-    if (!contact.workerNodes) {
-        contact.workerNodes = {};
+    if (!contact.data) {
+        contact.data = {};
+    }
+    if (!contact.data.workerNodes) {
+        contact.data.workerNodes = {};
     }
     return contact;
 };
 
 function arbiter(incumbent, candidate) {
+    if (!incumbent || !incumbent.data || !incumbent.data.workerNodes) {
+        return candidate;
+    }
+
+    if (!candidate || !candidate.data || !candidate.data.workerNodes) {
+        return incumbent;
+    }
+
     // we create a new object so that our selection is guaranteed to replace
     // the incumbent
     var merged = {
         id: incumbent.id, // incumbent.id === candidate.id within an arbiter
-        workerNodes: incumbent.workerNodes
+        data: {
+            workerNodes: incumbent.data.workerNodes
+        }
     };
 
-    Object.keys(candidate.workerNodes).forEach(function (workerNodeId) {
-        merged.workerNodes[workerNodeId] = candidate.workerNodes[workerNodeId];
+    Object.keys(candidate.data.workerNodes).forEach(function (workerNodeId) {
+        merged.data.workerNodes[workerNodeId] =
+            candidate.data.workerNodes[workerNodeId];
     });
 
     return merged;
 }
 ```
 
-Notice that in the above case, the Grow-Only-Set assumes that each worker node has a globally unique id.
+Notice that in the above case, the Grow-Only-Set assumes that each worker node has a globally unique id and that each value for a worker node id will be written only once.
 
 ### Technical Origin Details
 
-Discover is implemented using a stripped down version of the Kademlia Distributed Hash Table (DHT). It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE). 
+Discover is implemented using a stripped down version of the Kademlia Distributed Hash Table (DHT). It uses only the PING and FIND-NODE Kademlia protocol RPCs. (It leaves out STORE and FIND-VALUE).
 
-An enhancement _(maybe)_ on top of the Kademlia protocol implementation is the inclusion of optional _vector clocks_ in the discovery mechanism _(this is still a work in progress at this point and not exposed in a functioning way)_. The purpose of the vector clock is to account for rapid change in location of entities to be located. For example, if you rapidly migrate compute workers to different physical servers, vector clocks allow the distributed nodes to select between conflicting location reports by selecting the contact with the corresponding id that also has the largest vector clock value. A better example (and initial use case) of rapidly shifting entities are actors within a distributed actor configuration.
+An enhancement on top of the Kademlia protocol implementation is the inclusion of an arbiter function in the discovery mechanism. See [Arbiter function and arbiter details](#arbiter-function-and-arbiter-defaults) for more detailed explanation.
 
 ### Why Discover?
 
@@ -199,7 +217,7 @@ There are three reasons.
 
 Discover grew out of my experience with building messaging for a Node.js Platform as a Service based on an Actor Model of Computation. I did not like having a centralized messaging service that could bring down the entire platform. Messaging should be decentralized, which led to a Kademlia DHT-based implementation. _see: [Technical Origin Details](#technical-origin-details)_
 
-Every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation. 
+Every Kademlia DHT implementation I came across in Node.js community tightly coupled the procotocol implementation with the transport implementation.
 
 Lastly, I wanted to learn and commit to intuition the implementation of Kademlia DHT so that I can apply that knowledge in other projects.
 
@@ -270,7 +288,7 @@ The `callback` is called with the result of searching for `nodeId`. The result w
 ```javascript
 discover.find('bm9kZS5pZC50aGF0LmltLmxvb2tpbmcuZm9y', function (error, contact) {
     if (error) return console.error(error);
-    console.dir(contact); 
+    console.dir(contact);
 });
 ```
 
@@ -366,12 +384,12 @@ _**WARNING**: Using TCP transport is meant primarily for development in a develo
 
   * `contact`: _Object_ The node to contact with request to find `nodeId`.
     * `id`: _String (base64)_ Base64 encoded contact node id.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation.     
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
   * `nodeId`: _String (base64)_ Base64 encoded string representation of the node id to find.
   * `sender`: _Object_ The sender of this request.
     * `id`: _String (base64)_ Base64 encoded sender id.
     * `data`: _Any_ Sender data.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
 
 Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or otherwise shall be communicated by emitting a `node` event.
 
@@ -379,11 +397,11 @@ Issues a FIND-NODE request to the `contact`. Response, timeout, errors, or other
 
   * `contact`: _Object_ Contact to ping.
     * `id`: _String (base64)_ Base64 encoded contact node id.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
   * `sender`: _Object_ The sender of this request.
     * `id`: _String (base64)_ Base64 encoded sender id.
     * `data`: _Any_ Sender data.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
 
 Issues a PING request to the `contact`. The transport will emit `unreachable` event if the `contact` is unreachable, or `reached` event otherwise.
 
@@ -400,7 +418,7 @@ Sets `contact.transport` to transport configured values.
   * `sender`: _Object_ The contact making the request.
     * `id`: _String (base64)_ Base64 encoded sender id.
     * `data`: _Any_ Sender data.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
   * `callback`: _Function_ The callback to call with the result of processing the FIND-NODE request.
     * `error`: _Error_ An error, if any.
     * `response`: _Object_ or _Array_ The response to FIND-NODE request.
@@ -421,7 +439,7 @@ A single `contactWithNodeId` shall be returned with the information identifying 
 transport.on('findNode', function (nodeId, sender, callback) {
     // nodeId is unknown to this node, so it returns an array of nodes closer to it
     var error = null;
-    return callback(error, closestContacts); 
+    return callback(error, closestContacts);
 });
 ```
 
@@ -432,7 +450,7 @@ If an error occurs and a request cannot be fulfilled, an error should be passed 
 ```javascript
 transport.on('findNode', function (nodeId, sender, callback) {
     // some error happened
-    return callback(new Error("oh no!")); 
+    return callback(new Error("oh no!"));
 });
 ```
 
@@ -455,7 +473,7 @@ If `error` occurs, the transport encountered an error when issuing the `findNode
   * `sender`: _Object_ The contact making the request.
     * `id`: _String (base64)_ Base64 encoded sender node id.
     * `data`: _Any_ Sender node data.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
   * `callback`: _Function_ The callback to call with the result of processing the PING request.
     * `error`: _Error_ An error, if any.
     * `response`: _Object_ or _Array_ The response to PING request, if any.
@@ -465,7 +483,7 @@ Emitted when another node issues a PING request to this node.
 ```javascript
 transport.on('ping', function (nodeId, sender, callback) {
     // ... verify that we have the exact node specified by nodeId
-    return callback(null, contact); 
+    return callback(null, contact);
 });
 ```
 
@@ -476,7 +494,7 @@ If the exact node specified by nodeId does not exist, an error shall be returned
 ```javascript
 transport.on('ping', function (nodeId, sender, callback) {
     // ...we don't have the nodeId specified
-    return callback(true); 
+    return callback(true);
 });
 ```
 
@@ -485,7 +503,7 @@ transport.on('ping', function (nodeId, sender, callback) {
   * `contact`: _Object_ The contact that was reached when pinged.
     * `id`: _String (base64)_ Base64 encoded contact node id.
     * `data`: _Any_ Data included with the contact.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
 
 Emitted when a previously pinged `contact` is deemed reachable by the transport.
 
@@ -493,7 +511,7 @@ Emitted when a previously pinged `contact` is deemed reachable by the transport.
 
   * `contact`: _Object_ The contact that was unreachable when pinged.
     * `id`: _String (base64)_ Base64 encoded contact node id.
-    * `transport`: _Any_ Any data that the transport mechanism requires for operation. 
+    * `transport`: _Any_ Any data that the transport mechanism requires for operation.
 
 Emitted when a previously pinged `contact` is deemed unreachable by the transport.
 
@@ -503,13 +521,15 @@ Emitted when a previously pinged `contact` is deemed unreachable by the transpor
 
 This is roughly in order of current priority:
 
+  * **Update Transport Interface**: The transport interface should probably guarantee immutability and pass through of `contact.arbiter` property (much like it does right now for `contact.id` and `contact.data`). See #9 for more details.
   * **Implementation Correctness**: Gain confidence that the protocol functions as expected. This should involve running a lot of nodes and measuring information distribution latency and accuracy.
   * **TLS Transport** _(separate module)_ or it might make sense to change the TCP Transport into Net Transport and include within both TCP and TLS.
   * **UDP Transport** _(separate module)_
   * **DTLS Transport** _(separate module)_
+  * **Less destructive unregister**: Currently, `discover.unregister(contact)` deletes all "closest" contact information that was gathered within the k-bucket corresponding to the `contact`. This throws away DHT information stored there. An elaboration would be to distribute known contacts to other k-buckets when a `contact` is unregistered.
   * **Performance**: Make it fast and small.
     * **discover.kBuckets**: It should be a datastructure with _O(log n)_ operations.
-  * **Storage Refactoring**: There emerged (obvious in retrospect) a "storage" abstraction during the implementation of `discover` that is higher level than a `k-bucket` but that still seems to be worth extracting. 
+  * **Storage Refactoring**: There emerged (obvious in retrospect) a "storage" abstraction during the implementation of `discover` that is higher level than a `k-bucket` but that still seems to be worth extracting.
       * _24 Sep 2013:_ Despite a storage abstraction, it is not straightforward to separate out due to the 'ping' interaction between `k-bucket` and transport. KBucket storage implementation would have to pass some sort of token to Discover in order to remove an old contact form the correct KBucket (a closer KBucket could be registered while pinging is happening), but this exposes internal implementation, the hiding of which, was the point of abstracting a storage mechanism. It is also a very KBucket specific mechanism that I have difficulty generalizing to a common "storage" interface. Additionally, I am hard pressed to see Discover working well with non-k-bucket storage. Thusly, storage refactoring is no longer a priority.
 
 ### Other considerations
@@ -519,12 +539,6 @@ This is a non-exclusive list of some of the highlights to keep in mind and maybe
 #### Settle the vocabulary
 
 Throughout Discover, the transport, and the k-bucket implementations, the vocabulary is inconsistent (in particular the usage of "contact", "node", "network", and "DHT"). Once the implementation settles and it becomes obvious what belongs where, it will be helpful to have a common, unifying way to refer to everything.
-
-#### Less destructive unregister()
-
-Currently, `discover.unregister(contact)` deletes all "closest" contact information that was gathered within the k-bucket corresponding to the `contact`. This throws away DHT information stored there.
-
-An elaboration would be to distribute known contacts to other k-buckets when a `contact` is unregistered.
 
 ## Sources
 
